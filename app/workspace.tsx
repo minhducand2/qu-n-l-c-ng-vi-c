@@ -938,9 +938,25 @@ export default function Workspace({ userName }: { userName: string }) {
               <strong>{userName.split('@')[0]}</strong>
               <small>Chủ không gian</small>
             </div>
-            <a href="/signout-with-chatgpt?return_to=%2F" target="_top" title="Đăng xuất">
+            <button
+              type="button"
+              className="icon-btn"
+              title="Đăng xuất"
+              aria-label="Đăng xuất"
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/auth/logout', {
+                    method: 'POST', credentials: 'same-origin',
+                  });
+                  if (!response.ok) throw new Error('Đăng xuất thất bại');
+                  window.location.assign('/login');
+                } catch {
+                  setToast('Không thể đăng xuất. Vui lòng thử lại.');
+                }
+              }}
+            >
               <LogOut size={16} />
-            </a>
+            </button>
           </div>
         </div>
       </aside>

@@ -109,7 +109,8 @@ export default function LoginPage() {
             <h2>Chào mừng trở lại!</h2>
             <p className={styles.subtext}>Phiên đăng nhập độc lập của bạn đang hoạt động.</p>
             <div className={styles.profile}><div className={styles.avatar}>{(user.displayName || user.email).slice(0, 1).toUpperCase()}</div><div className={styles.profileText}><strong>{user.displayName}</strong><span>{user.email}</span></div><span className={styles.online} title="Phiên hợp lệ"/></div>
-            <div className={styles.notice}><Icon name="shield" size={19}/><span>Đăng nhập đã được xác minh. Khu vực quản lý công việc đang chờ chuyển đổi sang xác thực phiên mới; chưa sử dụng trang cũ để kiểm thử quyền tài khoản này.</span></div>
+            <div className={styles.notice}><Icon name="shield" size={19}/><span>Phiên đăng nhập hợp lệ. Bạn có thể vào không gian làm việc của mình.</span></div>
+            <a className={styles.secondaryButton} href="/">Vào không gian làm việc →</a>
             {error && <p className={styles.error} role="alert">{error}</p>}
             <button className={styles.secondaryButton} type="button" onClick={logout} disabled={loading}><Icon name="logout" size={18}/>{loading ? 'Đang đăng xuất...' : 'Đăng xuất'}</button>
           </> : <>
