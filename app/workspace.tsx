@@ -1,6 +1,6 @@
-"use client";
-import { useEffect, useState, useRef } from "react";
-import type { FormEvent } from "react";
+'use client';
+import { useEffect, useState, useRef } from 'react';
+import type { FormEvent } from 'react';
 import {
   LayoutDashboard,
   ListTodo,
@@ -41,84 +41,77 @@ import {
   SlidersHorizontal,
   Target,
   LogOut,
-} from "lucide-react";
-import {
-  statuses,
-  priorities,
-  overdue,
-  dateText,
-  localDay,
-  validateTask,
-} from "../lib/domain";
-import SharedTasksPanel from "./shared-tasks-panel";
+} from 'lucide-react';
+import { statuses, priorities, overdue, dateText, localDay, validateTask } from '../lib/domain';
+import SharedTasksPanel from './shared-tasks-panel';
 type Row = Record<string, any>;
 const nav = [
-  ["overview", "Tổng quan", LayoutDashboard],
-  ["tasks", "Công việc", ListTodo],
-  ["board", "Bảng Kanban", Columns3],
-  ["calendar", "Lịch công việc", CalendarDays],
-  ["plans", "Kế hoạch", Target],
-  ["approvals", "Phê duyệt", ShieldCheck],
-  ["departments", "Phòng ban", Building2],
-  ["people", "Nhân sự", Users],
-  ["organizations", "Quản lý tổ chức", Building2],
-  ["shared-tasks", "Công việc chung", Users],
-  ["chat", "Trao đổi", MessageSquare],
-  ["files", "Tài liệu", FolderOpen],
-  ["reports", "Báo cáo", BarChart3],
-  ["history", "Nhật ký", History],
+  ['overview', 'Tổng quan', LayoutDashboard],
+  ['tasks', 'Công việc', ListTodo],
+  ['board', 'Bảng Kanban', Columns3],
+  ['calendar', 'Lịch công việc', CalendarDays],
+  ['plans', 'Kế hoạch', Target],
+  ['approvals', 'Phê duyệt', ShieldCheck],
+  ['departments', 'Phòng ban', Building2],
+  ['people', 'Nhân sự', Users],
+  ['organizations', 'Quản lý tổ chức', Building2],
+  ['shared-tasks', 'Công việc chung', Users],
+  ['chat', 'Trao đổi', MessageSquare],
+  ['files', 'Tài liệu', FolderOpen],
+  ['reports', 'Báo cáo', BarChart3],
+  ['history', 'Nhật ký', History],
 ] as const;
 const fmtTime = (v: string) =>
   v
-    ? new Date(v).toLocaleString("vi-VN", {
-        timeZone: "Asia/Ho_Chi_Minh",
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
+    ? new Date(v).toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
       })
-    : "";
+    : '';
 const statusClass = (s: string) =>
-  s === "Hoàn thành"
-    ? "green"
-    : s === "Đang thực hiện"
-      ? "blue"
-      : ["Chờ duyệt", "Xem xét"].includes(s)
-        ? "amber"
-        : s === "Đã hủy"
-          ? "red"
-          : "gray";
+  s === 'Hoàn thành'
+    ? 'green'
+    : s === 'Đang thực hiện'
+      ? 'blue'
+      : ['Chờ duyệt', 'Xem xét'].includes(s)
+        ? 'amber'
+        : s === 'Đã hủy'
+          ? 'red'
+          : 'gray';
 const initials = (v: string) =>
   v
-    .split(" ")
+    .split(' ')
     .slice(-2)
     .map((x) => x[0])
-    .join("")
+    .join('')
     .toUpperCase();
 const blankTask = (): Row => ({
   id: crypto.randomUUID(),
-  kind: "task",
-  code: "CV-" + crypto.randomUUID().slice(0, 6).toUpperCase(),
-  title: "",
-  description: "",
-  department: "",
-  owner: "",
-  plan: "",
-  type: "",
-  status: "Chưa bắt đầu",
-  priority: "Trung bình",
-  start: "",
-  due: "",
+  kind: 'task',
+  code: 'CV-' + crypto.randomUUID().slice(0, 6).toUpperCase(),
+  title: '',
+  description: '',
+  department: '',
+  owner: '',
+  plan: '',
+  type: '',
+  status: 'Chưa bắt đầu',
+  priority: 'Trung bình',
+  start: '',
+  due: '',
   progress: 0,
-  result: "",
-  cancelReason: "",
+  result: '',
+  cancelReason: '',
   checklist: [],
   review: false,
   archived: false,
 });
 function Empty({
-  text = "Chưa có dữ liệu",
-  sub = "Các nội dung mới sẽ xuất hiện tại đây.",
+  text = 'Chưa có dữ liệu',
+  sub = 'Các nội dung mới sẽ xuất hiện tại đây.',
 }: {
   text?: string;
   sub?: string;
@@ -131,9 +124,9 @@ function Empty({
     </div>
   );
 }
-function Tag({ children, color = "gray" }: { children: any; color?: string }) {
+function Tag({ children, color = 'gray' }: { children: any; color?: string }) {
   return (
-    <span className={"tag " + color}>
+    <span className={'tag ' + color}>
       <i />
       {children}
     </span>
@@ -152,59 +145,51 @@ type OrganizationMember = {
   status: string;
   joinedAt: string;
 };
-const organizationRoles = [
-  "admin",
-  "leader",
-  "manager",
-  "member",
-  "viewer",
-] as const;
+const organizationRoles = ['admin', 'leader', 'manager', 'member', 'viewer'] as const;
 function OrganizationManager() {
   const [items, setItems] = useState<OrganizationItem[]>([]);
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState('');
   const [members, setMembers] = useState<OrganizationMember[]>([]);
-  const [name, setName] = useState("");
-  const [memberId, setMemberId] = useState("");
-  const [memberRole, setMemberRole] = useState<string>("member");
+  const [name, setName] = useState('');
+  const [memberId, setMemberId] = useState('');
+  const [memberRole, setMemberRole] = useState<string>('member');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   async function callApi(url: string, method: string, body: unknown) {
     const r = await fetch(url, {
       method,
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
     const result = (await r.json()) as {
       error?: string;
       workspace?: { id: string };
     };
-    if (!r.ok) throw Error(result.error || "Yêu cầu thất bại.");
+    if (!r.ok) throw Error(result.error || 'Yêu cầu thất bại.');
     return result;
   }
   async function loadOrganizations() {
     setLoading(true);
     try {
-      const r = await fetch("/api/workspaces", {
-        credentials: "same-origin",
-        cache: "no-store",
+      const r = await fetch('/api/workspaces', {
+        credentials: 'same-origin',
+        cache: 'no-store',
       });
       const data = (await r.json()) as {
         error?: string;
         workspaces?: OrganizationItem[];
       };
-      if (!r.ok) throw Error(data.error || "Không thể tải tổ chức.");
-      const list: OrganizationItem[] = Array.isArray(data.workspaces)
-        ? data.workspaces
-        : [];
+      if (!r.ok) throw Error(data.error || 'Không thể tải tổ chức.');
+      const list: OrganizationItem[] = Array.isArray(data.workspaces) ? data.workspaces : [];
       setItems(list);
       setSelected((previous) =>
-        list.some((x) => x.id === previous) ? previous : list[0]?.id || "",
+        list.some((x) => x.id === previous) ? previous : list[0]?.id || '',
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể tải tổ chức.");
+      setError(e instanceof Error ? e.message : 'Không thể tải tổ chức.');
     } finally {
       setLoading(false);
     }
@@ -215,19 +200,19 @@ function OrganizationManager() {
       return;
     }
     try {
-      const r = await fetch(
-        "/api/workspaces/" + encodeURIComponent(id) + "/members",
-        { credentials: "same-origin", cache: "no-store" },
-      );
+      const r = await fetch('/api/workspaces/' + encodeURIComponent(id) + '/members', {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
       const data = (await r.json()) as {
         error?: string;
         members?: OrganizationMember[];
       };
-      if (!r.ok) throw Error(data.error || "Không thể tải thành viên.");
+      if (!r.ok) throw Error(data.error || 'Không thể tải thành viên.');
       setMembers(Array.isArray(data.members) ? data.members : []);
     } catch (e) {
       setMembers([]);
-      setError(e instanceof Error ? e.message : "Không thể tải thành viên.");
+      setError(e instanceof Error ? e.message : 'Không thể tải thành viên.');
     }
   }
   useEffect(() => {
@@ -240,19 +225,19 @@ function OrganizationManager() {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    setError("");
-    setMessage("");
+    setError('');
+    setMessage('');
     try {
-      const result = await callApi("/api/workspaces", "POST", {
+      const result = await callApi('/api/workspaces', 'POST', {
         name: name.trim(),
       });
-      if (!result.workspace?.id) throw Error("API không trả về ID tổ chức.");
-      setName("");
+      if (!result.workspace?.id) throw Error('API không trả về ID tổ chức.');
+      setName('');
       await loadOrganizations();
       setSelected(result.workspace.id);
-      setMessage("Đã tạo tổ chức thành công.");
+      setMessage('Đã tạo tổ chức thành công.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể tạo tổ chức.");
+      setError(e instanceof Error ? e.message : 'Không thể tạo tổ chức.');
     } finally {
       setBusy(false);
     }
@@ -261,45 +246,38 @@ function OrganizationManager() {
     e.preventDefault();
     if (!selected || busy) return;
     setBusy(true);
-    setError("");
-    setMessage("");
+    setError('');
+    setMessage('');
     try {
-      await callApi(
-        "/api/workspaces/" + encodeURIComponent(selected) + "/members",
-        "POST",
-        { userId: memberId.trim(), role: memberRole },
-      );
-      setMemberId("");
+      await callApi('/api/workspaces/' + encodeURIComponent(selected) + '/members', 'POST', {
+        userId: memberId.trim(),
+        role: memberRole,
+      });
+      setMemberId('');
       await loadMembers(selected);
-      setMessage("Đã cấp quyền cho ID tài khoản.");
+      setMessage('Đã cấp quyền cho ID tài khoản.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể thêm thành viên.");
+      setError(e instanceof Error ? e.message : 'Không thể thêm thành viên.');
     } finally {
       setBusy(false);
     }
   }
-  async function updateMember(
-    member: OrganizationMember,
-    role: string,
-    status: string,
-  ) {
+  async function updateMember(member: OrganizationMember, role: string, status: string) {
     if (busy || !selected) return;
-    if (!confirm("Xác nhận cập nhật quyền thành viên này?")) return;
+    if (!confirm('Xác nhận cập nhật quyền thành viên này?')) return;
     setBusy(true);
-    setError("");
-    setMessage("");
+    setError('');
+    setMessage('');
     try {
-      await callApi(
-        "/api/workspaces/" + encodeURIComponent(selected) + "/members",
-        "PATCH",
-        { userId: member.userId, role, status },
-      );
+      await callApi('/api/workspaces/' + encodeURIComponent(selected) + '/members', 'PATCH', {
+        userId: member.userId,
+        role,
+        status,
+      });
       await loadMembers(selected);
-      setMessage("Đã cập nhật quyền thành viên.");
+      setMessage('Đã cập nhật quyền thành viên.');
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Không thể cập nhật thành viên.",
-      );
+      setError(e instanceof Error ? e.message : 'Không thể cập nhật thành viên.');
     } finally {
       setBusy(false);
     }
@@ -338,7 +316,7 @@ function OrganizationManager() {
                     disabled={busy}
                     onClick={() => setSelected(item.id)}
                   >
-                    {selected === item.id ? "Đang chọn" : "Quản lý"}
+                    {selected === item.id ? 'Đang chọn' : 'Quản lý'}
                   </button>
                 </div>
               ))}
@@ -346,14 +324,12 @@ function OrganizationManager() {
           ) : (
             <p>Chưa có tổ chức.</p>
           )}
-          <p className="help">
-            Dữ liệu công việc cá nhân hiện chưa được chia sẻ sang tổ chức.
-          </p>
+          <p className="help">Dữ liệu công việc cá nhân hiện chưa được chia sẻ sang tổ chức.</p>
           {current && (
             <>
               <hr />
               <h3>Thành viên — {current.name}</h3>
-              {current.role !== "admin" ? (
+              {current.role !== 'admin' ? (
                 <p className="help">Chỉ admin được quản lý thành viên.</p>
               ) : (
                 <>
@@ -370,10 +346,7 @@ function OrganizationManager() {
                     </label>
                     <label className="field">
                       Vai trò
-                      <select
-                        value={memberRole}
-                        onChange={(e) => setMemberRole(e.target.value)}
-                      >
+                      <select value={memberRole} onChange={(e) => setMemberRole(e.target.value)}>
                         {organizationRoles.map((x) => (
                           <option key={x} value={x}>
                             {x}
@@ -381,17 +354,14 @@ function OrganizationManager() {
                         ))}
                       </select>
                     </label>
-                    <button
-                      className="btn primary"
-                      disabled={busy || !memberId.trim()}
-                    >
+                    <button className="btn primary" disabled={busy || !memberId.trim()}>
                       <Plus size={16} />
                       Thêm thành viên
                     </button>
                   </form>
                   <p className="help">
-                    Chưa hỗ trợ mời bằng email. Chỉ nhập ID tài khoản đã được
-                    xác minh; danh mục Nhân sự không phải tài khoản đăng nhập.
+                    Chưa hỗ trợ mời bằng email. Chỉ nhập ID tài khoản đã được xác minh; danh mục
+                    Nhân sự không phải tài khoản đăng nhập.
                   </p>
                   <div className="archive-list">
                     {members.map((m) => (
@@ -399,22 +369,15 @@ function OrganizationManager() {
                         <div>
                           <strong>{m.userId}</strong>
                           <small>
-                            {m.role} ·{" "}
-                            {m.status === "active"
-                              ? "Đang hoạt động"
-                              : "Đã khóa"}
+                            {m.role} · {m.status === 'active' ? 'Đang hoạt động' : 'Đã khóa'}
                           </small>
                         </div>
-                        <div
-                          style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-                        >
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <select
-                            aria-label={"Vai trò của " + m.userId}
+                            aria-label={'Vai trò của ' + m.userId}
                             value={m.role}
                             disabled={busy}
-                            onChange={(e) =>
-                              void updateMember(m, e.target.value, m.status)
-                            }
+                            onChange={(e) => void updateMember(m, e.target.value, m.status)}
                           >
                             {organizationRoles.map((x) => (
                               <option value={x} key={x}>
@@ -429,11 +392,11 @@ function OrganizationManager() {
                               void updateMember(
                                 m,
                                 m.role,
-                                m.status === "active" ? "suspended" : "active",
+                                m.status === 'active' ? 'suspended' : 'active',
                               )
                             }
                           >
-                            {m.status === "active" ? "Khóa" : "Kích hoạt"}
+                            {m.status === 'active' ? 'Khóa' : 'Kích hoạt'}
                           </button>
                         </div>
                       </div>
@@ -462,10 +425,7 @@ function OrganizationManager() {
               placeholder="Ví dụ: Văn phòng điều hành"
             />
           </label>
-          <button
-            className="btn primary"
-            disabled={busy || name.trim().length < 2}
-          >
+          <button className="btn primary" disabled={busy || name.trim().length < 2}>
             <Plus size={16} />
             Tạo tổ chức
           </button>
@@ -478,8 +438,8 @@ function OrganizationManager() {
           <hr />
           <h3>Phạm vi tính năng</h3>
           <p className="help">
-            Thêm thành viên hiện chỉ cấp membership. Chưa có chia sẻ công việc,
-            mời qua email hay đăng nhập nhiều tài khoản trên local.
+            Thêm thành viên hiện chỉ cấp membership. Chưa có chia sẻ công việc, mời qua email hay
+            đăng nhập nhiều tài khoản trên local.
           </p>
         </form>
       </section>
@@ -489,39 +449,51 @@ function OrganizationManager() {
 export default function Workspace({ userName }: { userName: string }) {
   const [rows, setRows] = useState<Row[]>([]),
     [loading, setLoading] = useState(true),
-    [error, setError] = useState(""),
-    [toast, setToast] = useState(""),
-    [page, setPage] = useState("overview"),
-    [search, setSearch] = useState(""),
-    [dept, setDept] = useState(""),
-    [status, setStatus] = useState(""),
-    [priority, setPriority] = useState(""),
+    [error, setError] = useState(''),
+    [toast, setToast] = useState(''),
+    [page, setPage] = useState('overview'),
+    [search, setSearch] = useState(''),
+    [dept, setDept] = useState(''),
+    [status, setStatus] = useState(''),
+    [priority, setPriority] = useState(''),
     [onlyReview, setOnlyReview] = useState(false),
     [onlyLate, setOnlyLate] = useState(false),
     [edit, setEdit] = useState<Row | null>(null),
-    [tab, setTab] = useState("detail"),
+    [tab, setTab] = useState('detail'),
     [saving, setSaving] = useState(false),
-    [note, setNote] = useState(""),
-    [reason, setReason] = useState(""),
+    [note, setNote] = useState(''),
+    [reason, setReason] = useState(''),
     [catalog, setCatalog] = useState<Row | null>(null),
     [notifications, setNotifications] = useState(false),
     [sidebar, setSidebar] = useState(false),
-    [chat, setChat] = useState(""),
-    [channel, setChannel] = useState("general"),
-    [month, setMonth] = useState(() => new Date(localDay() + "T12:00:00")),
+    [chat, setChat] = useState(''),
+    [channel, setChannel] = useState('general'),
+    [month, setMonth] = useState(() => new Date(localDay() + 'T12:00:00')),
     [importRows, setImportRows] = useState<Row[] | null>(null),
-    [importError, setImportError] = useState("");
+    [importError, setImportError] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
+  // Deep link from "Công việc của tôi"; actual task access is checked by the API.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (
+      params.get('view') === 'shared-tasks' &&
+      params.get('workspaceId') &&
+      params.get('taskId')
+    ) {
+      setPage('shared-tasks');
+    }
+  }, []);
+
   async function refresh(silent = false) {
     if (!silent) setLoading(true);
     try {
-      const r = await fetch("/api/data");
+      const r = await fetch('/api/data');
       const d: any = await r.json();
       if (!r.ok) throw Error(d.error);
       setRows(d.records);
-      setError("");
+      setError('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể kết nối.");
+      setError(e instanceof Error ? e.message : 'Không thể kết nối.');
     } finally {
       setLoading(false);
     }
@@ -533,28 +505,28 @@ export default function Workspace({ userName }: { userName: string }) {
   }, []);
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(""), 4500);
+    const timer = setTimeout(() => setToast(''), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === 'Escape') {
         setEdit(null);
         setCatalog(null);
         setNotifications(false);
         setSidebar(false);
       }
     };
-    window.addEventListener("keydown", listener);
-    return () => window.removeEventListener("keydown", listener);
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
   }, []);
-  const tasks = rows.filter((x) => x.kind === "task" && !x.archived),
-    departments = rows.filter((x) => x.kind === "department" && !x.archived),
-    people = rows.filter((x) => x.kind === "person" && !x.archived),
-    plans = rows.filter((x) => x.kind === "plan" && !x.archived),
-    prefs = rows.find((x) => x.kind === "settings") || {
-      id: "prefs",
-      kind: "settings",
+  const tasks = rows.filter((x) => x.kind === 'task' && !x.archived),
+    departments = rows.filter((x) => x.kind === 'department' && !x.archived),
+    people = rows.filter((x) => x.kind === 'person' && !x.archived),
+    plans = rows.filter((x) => x.kind === 'plan' && !x.archived),
+    prefs = rows.find((x) => x.kind === 'settings') || {
+      id: 'prefs',
+      kind: 'settings',
       remindDays: 3,
     };
   const today = localDay();
@@ -564,7 +536,7 @@ export default function Workspace({ userName }: { userName: string }) {
     (t) =>
       (!search ||
         [t.title, t.code, t.description, person(t.owner)?.name]
-          .join(" ")
+          .join(' ')
           .toLowerCase()
           .includes(search.toLowerCase())) &&
       (!dept || t.department === dept) &&
@@ -574,42 +546,36 @@ export default function Workspace({ userName }: { userName: string }) {
       (!onlyLate || overdue(t)),
   );
   const late = tasks.filter((t) => overdue(t)),
-    done = tasks.filter((t) => t.status === "Hoàn thành"),
-    open = tasks.filter((t) => !["Hoàn thành", "Đã hủy"].includes(t.status)),
+    done = tasks.filter((t) => t.status === 'Hoàn thành'),
+    open = tasks.filter((t) => !['Hoàn thành', 'Đã hủy'].includes(t.status)),
     review = tasks.filter((t) => t.review),
-    pending = tasks.filter((t) => t.status === "Chờ duyệt");
+    pending = tasks.filter((t) => t.status === 'Chờ duyệt');
   const soon = open.filter(
     (t) =>
       t.due &&
       t.due >= today &&
-      (Date.parse(t.due) - Date.parse(today)) / 86400000 <=
-        Number(prefs.remindDays || 3),
+      (Date.parse(t.due) - Date.parse(today)) / 86400000 <= Number(prefs.remindDays || 3),
   );
   const alerts = [
-    ...late.map((t) => ({ task: t, text: "Đã qua hạn · " + dateText(t.due) })),
-    ...soon.map((t) => ({ task: t, text: "Sắp đến hạn · " + dateText(t.due) })),
+    ...late.map((t) => ({ task: t, text: 'Đã qua hạn · ' + dateText(t.due) })),
+    ...soon.map((t) => ({ task: t, text: 'Sắp đến hạn · ' + dateText(t.due) })),
   ];
-  async function save(record: Row, action = "save", why = "") {
+  async function save(record: Row, action = 'save', why = '') {
     setSaving(true);
     try {
-      const r = await fetch("/api/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const r = await fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ record, action, reason: why }),
       });
       const d: any = await r.json();
       if (!r.ok) throw Error(d.error);
-      setRows((prev) => [
-        d.record,
-        ...prev.filter((x) => x.id !== d.record.id),
-      ]);
-      setToast(
-        action === "delete" ? "Đã chuyển vào lưu trữ" : "Đã lưu thay đổi",
-      );
+      setRows((prev) => [d.record, ...prev.filter((x) => x.id !== d.record.id)]);
+      setToast(action === 'delete' ? 'Đã chuyển vào lưu trữ' : 'Đã lưu thay đổi');
       await refresh(true);
       return d.record as Row;
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "Không thể lưu.");
+      setToast(e instanceof Error ? e.message : 'Không thể lưu.');
       return null;
     } finally {
       setSaving(false);
@@ -618,18 +584,18 @@ export default function Workspace({ userName }: { userName: string }) {
   function go(p: string) {
     setPage(p);
     setSidebar(false);
-    setSearch("");
-    setDept("");
-    setStatus("");
-    setPriority("");
+    setSearch('');
+    setDept('');
+    setStatus('');
+    setPriority('');
     setOnlyLate(false);
     setOnlyReview(false);
   }
   function openTask(t: Row) {
     setEdit(structuredClone(t));
-    setTab("detail");
-    setNote("");
-    setReason("");
+    setTab('detail');
+    setNote('');
+    setReason('');
   }
   async function submitTask() {
     if (!edit) return;
@@ -639,32 +605,27 @@ export default function Workspace({ userName }: { userName: string }) {
       setToast((e as Error).message);
       return;
     }
-    const result = await save(edit, "save", reason);
+    const result = await save(edit, 'save', reason);
     if (result) setEdit(null);
   }
   async function archive(x: Row) {
-    if (
-      !confirm(
-        "Chuyển mục này vào lưu trữ? Bạn có thể khôi phục trong Cài đặt.",
-      )
-    )
-      return;
-    if (await save(x, "delete")) {
+    if (!confirm('Chuyển mục này vào lưu trữ? Bạn có thể khôi phục trong Cài đặt.')) return;
+    if (await save(x, 'delete')) {
       setEdit(null);
       setCatalog(null);
     }
   }
-  async function upload(file: File, taskId = "") {
+  async function upload(file: File, taskId = '') {
     setSaving(true);
     try {
       const f = new FormData();
-      f.set("file", file);
-      f.set("taskId", taskId);
-      const r = await fetch("/api/files", { method: "POST", body: f });
+      f.set('file', file);
+      f.set('taskId', taskId);
+      const r = await fetch('/api/files', { method: 'POST', body: f });
       const d: any = await r.json();
       if (!r.ok) throw Error(d.error);
       await refresh(true);
-      setToast("Đã tải tệp lên");
+      setToast('Đã tải tệp lên');
     } catch (e) {
       setToast((e as Error).message);
     } finally {
@@ -673,7 +634,7 @@ export default function Workspace({ userName }: { userName: string }) {
   }
   function download(name: string, body: string, type: string) {
     const u = URL.createObjectURL(new Blob([body], { type }));
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = u;
     a.download = name;
     a.click();
@@ -681,22 +642,22 @@ export default function Workspace({ userName }: { userName: string }) {
   }
   function exportCSV() {
     const safe = (x: any) => {
-      let s = String(x ?? "");
+      let s = String(x ?? '');
       if (/^[=+@-]/.test(s)) s = "'" + s;
       return '"' + s.replaceAll('"', '""') + '"';
     };
     const data = [
       [
-        "Mã",
-        "Công việc",
-        "Phòng ban",
-        "Người phụ trách",
-        "Trạng thái",
-        "Ưu tiên",
-        "Bắt đầu",
-        "Hạn chót",
-        "Tiến độ (%)",
-        "Cần xác minh",
+        'Mã',
+        'Công việc',
+        'Phòng ban',
+        'Người phụ trách',
+        'Trạng thái',
+        'Ưu tiên',
+        'Bắt đầu',
+        'Hạn chót',
+        'Tiến độ (%)',
+        'Cần xác minh',
       ],
       ...filtered.map((t) => [
         t.code,
@@ -708,27 +669,26 @@ export default function Workspace({ userName }: { userName: string }) {
         t.start,
         t.due,
         t.progress,
-        t.review ? "Có" : "Không",
+        t.review ? 'Có' : 'Không',
       ]),
     ];
     download(
-      "TEAM360-cong-viec.csv",
-      "\uFEFF" + data.map((r) => r.map(safe).join(",")).join("\r\n"),
-      "text/csv;charset=utf-8",
+      'TEAM360-cong-viec.csv',
+      '\uFEFF' + data.map((r) => r.map(safe).join(',')).join('\r\n'),
+      'text/csv;charset=utf-8',
     );
-    setToast("Đã xuất danh sách theo bộ lọc hiện tại");
+    setToast('Đã xuất danh sách theo bộ lọc hiện tại');
   }
   async function importFile(file: File) {
     try {
       const raw = JSON.parse(await file.text());
       const list = Array.isArray(raw) ? raw : raw.records;
-      if (!Array.isArray(list) || list.length > 500)
-        throw Error("Chọn JSON tối đa 500 công việc.");
-      const listTasks = list.filter((r: Row) => r.kind === "task");
-      if (!listTasks.length) throw Error("File chưa có công việc.");
+      if (!Array.isArray(list) || list.length > 500) throw Error('Chọn JSON tối đa 500 công việc.');
+      const listTasks = list.filter((r: Row) => r.kind === 'task');
+      if (!listTasks.length) throw Error('File chưa có công việc.');
       listTasks.forEach(validateTask);
       setImportRows(listTasks);
-      setImportError("");
+      setImportError('');
     } catch (e) {
       setToast((e as Error).message);
     }
@@ -738,24 +698,22 @@ export default function Workspace({ userName }: { userName: string }) {
     let count = 0;
     for (const t of importRows) {
       if (rows.some((r) => r.id === t.id)) continue;
-      const fresh = { ...t, version: undefined, kind: "task" };
+      const fresh = { ...t, version: undefined, kind: 'task' };
       if (!(await save(fresh))) {
         setImportError(
-          "Đã nhập " +
+          'Đã nhập ' +
             count +
-            " việc. Một dòng không hợp lệ; hãy kiểm tra phòng ban/nhân sự và thử lại.",
+            ' việc. Một dòng không hợp lệ; hãy kiểm tra phòng ban/nhân sự và thử lại.',
         );
         return;
       }
       count++;
     }
-    setToast("Đã nhập " + count + " công việc; bỏ qua ID đã tồn tại.");
+    setToast('Đã nhập ' + count + ' công việc; bỏ qua ID đã tồn tại.');
     setImportRows(null);
   }
   const title =
-    page === "settings"
-      ? "Cài đặt"
-      : nav.find((x) => x[0] === page)?.[1] || "Tổng quan";
+    page === 'settings' ? 'Cài đặt' : nav.find((x) => x[0] === page)?.[1] || 'Tổng quan';
   function TaskTable({ list = filtered }: { list?: Row[] }) {
     return list.length ? (
       <div className="table-wrap">
@@ -777,34 +735,24 @@ export default function Workspace({ userName }: { userName: string }) {
                 key={t.id}
                 onClick={() => openTask(t)}
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && openTask(t)}
+                onKeyDown={(e) => e.key === 'Enter' && openTask(t)}
               >
                 <td className="task-title">
                   <small>
                     {t.code}
-                    {t.review && (
-                      <span
-                        className="review-dot"
-                        title="Cần xác minh dữ liệu"
-                      />
-                    )}
+                    {t.review && <span className="review-dot" title="Cần xác minh dữ liệu" />}
                   </small>
                   <strong>{t.title}</strong>
                 </td>
                 <td>
-                  <span
-                    className="dept-pill"
-                    style={{ color: department(t.department)?.color }}
-                  >
-                    {department(t.department)?.name || "Chưa chọn"}
+                  <span className="dept-pill" style={{ color: department(t.department)?.color }}>
+                    {department(t.department)?.name || 'Chưa chọn'}
                   </span>
                 </td>
                 <td>
                   {person(t.owner) ? (
                     <span className="person">
-                      <b className="avatar mini">
-                        {initials(person(t.owner)!.name)}
-                      </b>
+                      <b className="avatar mini">{initials(person(t.owner)!.name)}</b>
                       {person(t.owner)!.name}
                     </span>
                   ) : (
@@ -814,21 +762,15 @@ export default function Workspace({ userName }: { userName: string }) {
                 <td>
                   <Tag color={statusClass(t.status)}>{t.status}</Tag>
                 </td>
-                <td className={overdue(t) ? "red-text" : ""}>
-                  {t.due ? (
-                    dateText(t.due)
-                  ) : (
-                    <span className="muted">Chưa có hạn</span>
-                  )}
-                  {overdue(t) && (
-                    <small>Quá hạn {t.review ? "· cần xác minh" : ""}</small>
-                  )}
+                <td className={overdue(t) ? 'red-text' : ''}>
+                  {t.due ? dateText(t.due) : <span className="muted">Chưa có hạn</span>}
+                  {overdue(t) && <small>Quá hạn {t.review ? '· cần xác minh' : ''}</small>}
                 </td>
                 <td>
                   <div className="progress-cell">
                     <span>{t.progress}%</span>
                     <div className="progress">
-                      <i style={{ width: t.progress + "%" }} />
+                      <i style={{ width: t.progress + '%' }} />
                     </div>
                   </div>
                 </td>
@@ -841,10 +783,7 @@ export default function Workspace({ userName }: { userName: string }) {
         </table>
       </div>
     ) : (
-      <Empty
-        text="Không có công việc phù hợp"
-        sub="Thay đổi bộ lọc hoặc tạo công việc mới."
-      />
+      <Empty text="Không có công việc phù hợp" sub="Thay đổi bộ lọc hoặc tạo công việc mới." />
     );
   }
   function Filters() {
@@ -859,11 +798,7 @@ export default function Workspace({ userName }: { userName: string }) {
             placeholder="Tìm theo tên, mã công việc..."
           />
         </div>
-        <select
-          aria-label="Lọc phòng ban"
-          value={dept}
-          onChange={(e) => setDept(e.target.value)}
-        >
+        <select aria-label="Lọc phòng ban" value={dept} onChange={(e) => setDept(e.target.value)}>
           <option value="">Tất cả phòng ban</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>
@@ -892,7 +827,7 @@ export default function Workspace({ userName }: { userName: string }) {
           ))}
         </select>
         <button
-          className={"filter-toggle " + (onlyReview ? "selected" : "")}
+          className={'filter-toggle ' + (onlyReview ? 'selected' : '')}
           onClick={() => setOnlyReview(!onlyReview)}
         >
           <SlidersHorizontal size={15} />
@@ -902,10 +837,10 @@ export default function Workspace({ userName }: { userName: string }) {
           <button
             className="text-btn"
             onClick={() => {
-              setDept("");
-              setStatus("");
-              setPriority("");
-              setSearch("");
+              setDept('');
+              setStatus('');
+              setPriority('');
+              setSearch('');
               setOnlyLate(false);
               setOnlyReview(false);
             }}
@@ -920,15 +855,14 @@ export default function Workspace({ userName }: { userName: string }) {
     return list.length ? (
       <div className="file-list">
         {list.map((f) => (
-          <a key={f.id} href={"/api/files?id=" + f.id} className="file-row">
+          <a key={f.id} href={'/api/files?id=' + f.id} className="file-row">
             <span className="file-icon">
               <FileText size={23} />
             </span>
             <div>
               <strong>{f.name}</strong>
               <small>
-                {(f.size / 1024).toFixed(0)} KB · {f.author} ·{" "}
-                {fmtTime(f.updated)}
+                {(f.size / 1024).toFixed(0)} KB · {f.author} · {fmtTime(f.updated)}
               </small>
             </div>
             <Download size={18} />
@@ -936,21 +870,18 @@ export default function Workspace({ userName }: { userName: string }) {
         ))}
       </div>
     ) : (
-      <Empty
-        text="Chưa có tài liệu"
-        sub="Tải tài liệu lên để lưu cùng công việc."
-      />
+      <Empty text="Chưa có tài liệu" sub="Tải tài liệu lên để lưu cùng công việc." />
     );
   }
   return (
     <div className="app-shell">
-      <aside className={"sidebar " + (sidebar ? "mobile-open" : "")}>
+      <aside className={'sidebar ' + (sidebar ? 'mobile-open' : '')}>
         <a
           href="#"
           className="brand"
           onClick={(e) => {
             e.preventDefault();
-            go("overview");
+            go('overview');
           }}
         >
           <span className="brand-icon">
@@ -973,21 +904,15 @@ export default function Workspace({ userName }: { userName: string }) {
         <nav>
           {nav.map(([id, label, Icon], i) => (
             <div key={id}>
-              {i === 6 && (
-                <span className="nav-label section-label">
-                  TỔ CHỨC & PHỐI HỢP
-                </span>
-              )}
+              {i === 6 && <span className="nav-label section-label">TỔ CHỨC & PHỐI HỢP</span>}
               <button
-                className={page === id ? "nav-item active" : "nav-item"}
+                className={page === id ? 'nav-item active' : 'nav-item'}
                 onClick={() => go(id)}
               >
                 <Icon size={18} />
                 <span>{label}</span>
-                {id === "tasks" && <small>{tasks.length}</small>}
-                {id === "approvals" && pending.length > 0 && (
-                  <small>{pending.length}</small>
-                )}
+                {id === 'tasks' && <small>{tasks.length}</small>}
+                {id === 'approvals' && pending.length > 0 && <small>{pending.length}</small>}
               </button>
             </div>
           ))}
@@ -1001,8 +926,8 @@ export default function Workspace({ userName }: { userName: string }) {
             </div>
           </div>
           <button
-            className={"nav-item " + (page === "settings" ? "active" : "")}
-            onClick={() => go("settings")}
+            className={'nav-item ' + (page === 'settings' ? 'active' : '')}
+            onClick={() => go('settings')}
           >
             <Settings size={18} />
             Cài đặt
@@ -1010,22 +935,16 @@ export default function Workspace({ userName }: { userName: string }) {
           <div className="profile">
             <span className="avatar">{initials(userName)}</span>
             <div>
-              <strong>{userName.split("@")[0]}</strong>
+              <strong>{userName.split('@')[0]}</strong>
               <small>Chủ không gian</small>
             </div>
-            <a
-              href="/signout-with-chatgpt?return_to=%2F"
-              target="_top"
-              title="Đăng xuất"
-            >
+            <a href="/signout-with-chatgpt?return_to=%2F" target="_top" title="Đăng xuất">
               <LogOut size={16} />
             </a>
           </div>
         </div>
       </aside>
-      {sidebar && (
-        <div className="sidebar-shade" onClick={() => setSidebar(false)} />
-      )}
+      {sidebar && <div className="sidebar-shade" onClick={() => setSidebar(false)} />}
       <div className="main-shell">
         <header className="topbar">
           <button
@@ -1048,7 +967,7 @@ export default function Workspace({ userName }: { userName: string }) {
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
-                  setPage("tasks");
+                  setPage('tasks');
                 }}
               />
               <kbd>⌕</kbd>
@@ -1068,34 +987,28 @@ export default function Workspace({ userName }: { userName: string }) {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                TEAM360 /{" "}
-                {page === "overview"
-                  ? "ĐIỀU HÀNH TẬP TRUNG"
-                  : title.toUpperCase()}
+                TEAM360 / {page === 'overview' ? 'ĐIỀU HÀNH TẬP TRUNG' : title.toUpperCase()}
               </div>
-              <h1>{page === "overview" ? "Tổng quan công việc" : title}</h1>
+              <h1>{page === 'overview' ? 'Tổng quan công việc' : title}</h1>
               <p>
-                {page === "overview"
-                  ? "Nắm bắt tiến độ, kết nối đội ngũ và tập trung vào điều quan trọng."
-                  : page === "chat"
-                    ? "Lưu trao đổi trong không gian riêng tư. Chưa mở truy cập nhiều tài khoản."
-                    : page === "people"
-                      ? "Danh mục từ dữ liệu gốc. Phòng ban và tài khoản cần được xác nhận."
-                      : page === "shared-tasks"
-                        ? "Giao việc, theo dõi và phê duyệt trong tổ chức đã chọn."
-                        : "Quản lý thông tin và theo dõi mọi thay đổi trong cùng một không gian."}
+                {page === 'overview'
+                  ? 'Nắm bắt tiến độ, kết nối đội ngũ và tập trung vào điều quan trọng.'
+                  : page === 'chat'
+                    ? 'Lưu trao đổi trong không gian riêng tư. Chưa mở truy cập nhiều tài khoản.'
+                    : page === 'people'
+                      ? 'Danh mục từ dữ liệu gốc. Phòng ban và tài khoản cần được xác nhận.'
+                      : page === 'shared-tasks'
+                        ? 'Giao việc, theo dõi và phê duyệt trong tổ chức đã chọn.'
+                        : 'Quản lý thông tin và theo dõi mọi thay đổi trong cùng một không gian.'}
               </p>
             </div>
-            {page !== "shared-tasks" && (
+            {page !== 'shared-tasks' && (
               <div className="heading-actions">
                 <button className="btn secondary" onClick={exportCSV}>
                   <Download size={16} />
                   <span>Xuất báo cáo</span>
                 </button>
-                <button
-                  className="btn primary"
-                  onClick={() => openTask(blankTask())}
-                >
+                <button className="btn primary" onClick={() => openTask(blankTask())}>
                   <Plus size={18} />
                   Tạo công việc
                 </button>
@@ -1116,7 +1029,7 @@ export default function Workspace({ userName }: { userName: string }) {
             </div>
           ) : (
             <>
-              {page === "overview" && (
+              {page === 'overview' && (
                 <>
                   <div className="overview-date">
                     <span>
@@ -1125,79 +1038,70 @@ export default function Workspace({ userName }: { userName: string }) {
                     </span>
                     <span>
                       <CalendarDays size={15} />
-                      {new Date(today + "T12:00:00").toLocaleDateString(
-                        "vi-VN",
-                        {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        },
-                      )}
+                      {new Date(today + 'T12:00:00').toLocaleDateString('vi-VN', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                     </span>
                   </div>
                   <div className="stats-grid">
                     {[
                       {
-                        label: "Tổng công việc",
+                        label: 'Tổng công việc',
                         value: tasks.length,
                         icon: ListTodo,
-                        color: "teal",
-                        sub: "Trong không gian của bạn",
-                        action: () => go("tasks"),
+                        color: 'teal',
+                        sub: 'Trong không gian của bạn',
+                        action: () => go('tasks'),
                       },
                       {
-                        label: "Đang thực hiện",
-                        value: tasks.filter(
-                          (t) => t.status === "Đang thực hiện",
-                        ).length,
+                        label: 'Đang thực hiện',
+                        value: tasks.filter((t) => t.status === 'Đang thực hiện').length,
                         icon: Clock,
-                        color: "blue",
-                        sub: "Công việc đang triển khai",
+                        color: 'blue',
+                        sub: 'Công việc đang triển khai',
                         action: () => {
-                          go("tasks");
-                          setStatus("Đang thực hiện");
+                          go('tasks');
+                          setStatus('Đang thực hiện');
                         },
                       },
                       {
-                        label: "Đã hoàn thành",
+                        label: 'Đã hoàn thành',
                         value: done.length,
                         icon: CheckCircle2,
-                        color: "green",
+                        color: 'green',
                         sub: tasks.length
-                          ? "Trên " + tasks.length + " công việc ghi nhận"
-                          : "Chưa có dữ liệu",
+                          ? 'Trên ' + tasks.length + ' công việc ghi nhận'
+                          : 'Chưa có dữ liệu',
                         action: () => {
-                          go("tasks");
-                          setStatus("Hoàn thành");
+                          go('tasks');
+                          setStatus('Hoàn thành');
                         },
                       },
                       {
-                        label: "Qua hạn theo dữ liệu",
+                        label: 'Qua hạn theo dữ liệu',
                         value: late.length,
                         icon: Flag,
-                        color: "orange",
+                        color: 'orange',
                         sub: late.some((t) => t.review)
-                          ? "Có dữ liệu cần xác minh"
-                          : "Cần ưu tiên xử lý",
+                          ? 'Có dữ liệu cần xác minh'
+                          : 'Cần ưu tiên xử lý',
                         action: () => {
-                          go("tasks");
+                          go('tasks');
                           setOnlyLate(true);
                         },
                       },
                     ].map((s) => (
-                      <button
-                        key={s.label}
-                        className="stat-card"
-                        onClick={s.action}
-                      >
+                      <button key={s.label} className="stat-card" onClick={s.action}>
                         <div>
                           <span>{s.label}</span>
-                          <span className={"stat-icon " + s.color}>
+                          <span className={'stat-icon ' + s.color}>
                             <s.icon size={19} />
                           </span>
                         </div>
-                        <strong>{s.value.toString().padStart(2, "0")}</strong>
+                        <strong>{s.value.toString().padStart(2, '0')}</strong>
                         <small>
                           {s.sub}
                           <ArrowUpRight size={15} />
@@ -1211,17 +1115,15 @@ export default function Workspace({ userName }: { userName: string }) {
                         <AlertTriangle size={19} />
                       </span>
                       <div>
-                        <strong>
-                          {review.length} công việc cần xác minh dữ liệu
-                        </strong>
+                        <strong>{review.length} công việc cần xác minh dữ liệu</strong>
                         <p>
-                          Kiểm tra ngày tháng, người phụ trách và trạng thái từ
-                          bảng Excel trước khi đánh giá hiệu suất.
+                          Kiểm tra ngày tháng, người phụ trách và trạng thái từ bảng Excel trước khi
+                          đánh giá hiệu suất.
                         </p>
                       </div>
                       <button
                         onClick={() => {
-                          go("tasks");
+                          go('tasks');
                           setOnlyReview(true);
                         }}
                       >
@@ -1236,24 +1138,19 @@ export default function Workspace({ userName }: { userName: string }) {
                           <h2>Phân bổ công việc</h2>
                           <p>Theo phòng chủ trì</p>
                         </div>
-                        <button
-                          className="text-btn"
-                          onClick={() => go("reports")}
-                        >
+                        <button className="text-btn" onClick={() => go('reports')}>
                           Chi tiết <ArrowUpRight size={15} />
                         </button>
                       </div>
                       <div className="bar-chart">
                         {departments.map((d) => {
-                          const count = tasks.filter(
-                            (t) => t.department === d.id,
-                          ).length;
+                          const count = tasks.filter((t) => t.department === d.id).length;
                           return (
                             <button
                               className="bar-row"
                               key={d.id}
                               onClick={() => {
-                                go("tasks");
+                                go('tasks');
                                 setDept(d.id);
                               }}
                             >
@@ -1261,10 +1158,7 @@ export default function Workspace({ userName }: { userName: string }) {
                               <div className="bar-track">
                                 <i
                                   style={{
-                                    width:
-                                      (count / Math.max(1, tasks.length)) *
-                                        100 +
-                                      "%",
+                                    width: (count / Math.max(1, tasks.length)) * 100 + '%',
                                     background: d.color,
                                   }}
                                 />
@@ -1276,8 +1170,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       </div>
                       <div className="chart-foot">
                         <span className="dot teal-bg" />
-                        Số nhiệm vụ chủ trì{" "}
-                        <span>Không đếm lặp người phối hợp</span>
+                        Số nhiệm vụ chủ trì <span>Không đếm lặp người phối hợp</span>
                       </div>
                     </section>
                     <section className="panel status-panel">
@@ -1294,7 +1187,7 @@ export default function Workspace({ userName }: { userName: string }) {
                           style={{
                             background: tasks.length
                               ? `conic-gradient(#16846b 0 ${(done.length / tasks.length) * 100}%,#e8eef0 0 100%)`
-                              : "#e8eef0",
+                              : '#e8eef0',
                           }}
                         >
                           <div>
@@ -1304,26 +1197,24 @@ export default function Workspace({ userName }: { userName: string }) {
                         </div>
                         <div className="status-legend">
                           {[
-                            "Chưa bắt đầu",
-                            "Đang thực hiện",
-                            "Xem xét",
-                            "Hoàn thành",
-                            "Chưa xác định",
+                            'Chưa bắt đầu',
+                            'Đang thực hiện',
+                            'Xem xét',
+                            'Hoàn thành',
+                            'Chưa xác định',
                           ].map((s, i) => (
                             <div key={s}>
-                              <span className={"legend-dot l" + i} />
+                              <span className={'legend-dot l' + i} />
                               <span>{s}</span>
-                              <b>
-                                {tasks.filter((t) => t.status === s).length}
-                              </b>
+                              <b>{tasks.filter((t) => t.status === s).length}</b>
                             </div>
                           ))}
                         </div>
                       </div>
                       <div className="chart-foot">
                         {review.length > 0
-                          ? "Chưa đủ dữ liệu xác minh để kết luận hiệu suất."
-                          : "Tỷ lệ thể hiện trạng thái công việc, không phải năng suất cá nhân."}
+                          ? 'Chưa đủ dữ liệu xác minh để kết luận hiệu suất.'
+                          : 'Tỷ lệ thể hiện trạng thái công việc, không phải năng suất cá nhân.'}
                       </div>
                     </section>
                   </div>
@@ -1331,12 +1222,11 @@ export default function Workspace({ userName }: { userName: string }) {
                     <div className="panel-heading">
                       <div>
                         <h2>
-                          Công việc cần chú ý{" "}
-                          <span className="count-badge">{tasks.length}</span>
+                          Công việc cần chú ý <span className="count-badge">{tasks.length}</span>
                         </h2>
                         <p>Ưu tiên kiểm tra dữ liệu và phân công trách nhiệm</p>
                       </div>
-                      <button className="text-btn" onClick={() => go("tasks")}>
+                      <button className="text-btn" onClick={() => go('tasks')}>
                         Xem tất cả <ArrowRight size={16} />
                       </button>
                     </div>
@@ -1351,8 +1241,7 @@ export default function Workspace({ userName }: { userName: string }) {
                         Dấu vàng: dữ liệu cần xác minh
                       </span>
                       <span>
-                        {tasks.length} công việc · {departments.length} phòng
-                        ban
+                        {tasks.length} công việc · {departments.length} phòng ban
                       </span>
                     </div>
                   </section>
@@ -1368,13 +1257,9 @@ export default function Workspace({ userName }: { userName: string }) {
                           Một đội ngũ cùng tiến.
                         </h2>
                         <p>
-                          Sắp xếp công việc theo kế hoạch để theo dõi các đầu ra
-                          trong cùng một nơi.
+                          Sắp xếp công việc theo kế hoạch để theo dõi các đầu ra trong cùng một nơi.
                         </p>
-                        <button
-                          className="text-btn"
-                          onClick={() => go("plans")}
-                        >
+                        <button className="text-btn" onClick={() => go('plans')}>
                           Quản lý kế hoạch <ArrowRight size={16} />
                         </button>
                       </div>
@@ -1391,16 +1276,13 @@ export default function Workspace({ userName }: { userName: string }) {
                     <section className="panel">
                       <div className="panel-heading">
                         <h2>Hoạt động gần đây</h2>
-                        <button
-                          className="text-btn"
-                          onClick={() => go("history")}
-                        >
+                        <button className="text-btn" onClick={() => go('history')}>
                           Xem thêm
                         </button>
                       </div>
                       <div className="activity-list">
                         {rows
-                          .filter((x) => x.kind === "audit")
+                          .filter((x) => x.kind === 'audit')
                           .slice(0, 3)
                           .map((a) => (
                             <div key={a.id}>
@@ -1415,17 +1297,12 @@ export default function Workspace({ userName }: { userName: string }) {
                               </div>
                             </div>
                           ))}
-                        {!rows.some((x) => x.kind === "audit") && (
+                        {!rows.some((x) => x.kind === 'audit') && (
                           <div>
                             <span className="activity-dot" />
                             <div>
-                              <strong>
-                                Dữ liệu gốc đã sẵn sàng để rà soát
-                              </strong>
-                              <small>
-                                3 công việc, 5 phòng ban và 34 tên nhân sự từ
-                                Excel
-                              </small>
+                              <strong>Dữ liệu gốc đã sẵn sàng để rà soát</strong>
+                              <small>3 công việc, 5 phòng ban và 34 tên nhân sự từ Excel</small>
                             </div>
                           </div>
                         )}
@@ -1434,29 +1311,27 @@ export default function Workspace({ userName }: { userName: string }) {
                   </div>
                 </>
               )}
-              {["tasks", "board", "approvals"].includes(page) && (
-                <section
-                  className={"panel " + (page === "board" ? "board-panel" : "")}
-                >
+              {['tasks', 'board', 'approvals'].includes(page) && (
+                <section className={'panel ' + (page === 'board' ? 'board-panel' : '')}>
                   <div className="panel-heading">
                     <div className="view-tabs">
                       <button
-                        className={page === "tasks" ? "active" : ""}
-                        onClick={() => setPage("tasks")}
+                        className={page === 'tasks' ? 'active' : ''}
+                        onClick={() => setPage('tasks')}
                       >
                         <ListTodo size={16} />
                         Danh sách
                       </button>
                       <button
-                        className={page === "board" ? "active" : ""}
-                        onClick={() => setPage("board")}
+                        className={page === 'board' ? 'active' : ''}
+                        onClick={() => setPage('board')}
                       >
                         <Columns3 size={16} />
                         Kanban
                       </button>
                       <button
-                        className={page === "approvals" ? "active" : ""}
-                        onClick={() => setPage("approvals")}
+                        className={page === 'approvals' ? 'active' : ''}
+                        onClick={() => setPage('approvals')}
                       >
                         <ShieldCheck size={16} />
                         Chờ duyệt <b>{pending.length}</b>
@@ -1471,20 +1346,16 @@ export default function Workspace({ userName }: { userName: string }) {
                     </button>
                   </div>
                   <Filters />
-                  {page === "board" ? (
+                  {page === 'board' ? (
                     <div className="kanban">
                       {statuses
-                        .filter((s) => s !== "Đã hủy")
+                        .filter((s) => s !== 'Đã hủy')
                         .map((s) => (
                           <div className="kanban-column" key={s}>
                             <h3>
-                              <span
-                                className={"status-mark " + statusClass(s)}
-                              />
+                              <span className={'status-mark ' + statusClass(s)} />
                               {s}
-                              <small>
-                                {filtered.filter((t) => t.status === s).length}
-                              </small>
+                              <small>{filtered.filter((t) => t.status === s).length}</small>
                             </h3>
                             {filtered
                               .filter((t) => t.status === s)
@@ -1496,41 +1367,29 @@ export default function Workspace({ userName }: { userName: string }) {
                                 >
                                   <div>
                                     <small>{t.code}</small>
-                                    {t.review && (
-                                      <AlertTriangle
-                                        size={15}
-                                        className="amber-text"
-                                      />
-                                    )}
+                                    {t.review && <AlertTriangle size={15} className="amber-text" />}
                                   </div>
                                   <strong>{t.title}</strong>
                                   <span className="dept-pill">
-                                    {department(t.department)?.name ||
-                                      "Chưa chọn phòng"}
+                                    {department(t.department)?.name || 'Chưa chọn phòng'}
                                   </span>
                                   <div className="progress">
-                                    <i style={{ width: t.progress + "%" }} />
+                                    <i style={{ width: t.progress + '%' }} />
                                   </div>
                                   <footer>
-                                    <span
-                                      className={overdue(t) ? "red-text" : ""}
-                                    >
+                                    <span className={overdue(t) ? 'red-text' : ''}>
                                       <CalendarDays size={13} />
                                       {dateText(t.due)}
                                     </span>
                                     <span className="avatar mini">
-                                      {person(t.owner)
-                                        ? initials(person(t.owner)!.name)
-                                        : "?"}
+                                      {person(t.owner) ? initials(person(t.owner)!.name) : '?'}
                                     </span>
                                   </footer>
                                 </button>
                               ))}
                             <button
                               className="add-column"
-                              onClick={() =>
-                                openTask({ ...blankTask(), status: s })
-                              }
+                              onClick={() => openTask({ ...blankTask(), status: s })}
                             >
                               <Plus size={15} />
                               Thêm công việc
@@ -1541,20 +1400,20 @@ export default function Workspace({ userName }: { userName: string }) {
                   ) : (
                     <TaskTable
                       list={
-                        page === "approvals"
-                          ? filtered.filter((t) => t.status === "Chờ duyệt")
+                        page === 'approvals'
+                          ? filtered.filter((t) => t.status === 'Chờ duyệt')
                           : filtered
                       }
                     />
                   )}
                   <div className="panel-footer">
-                    {page === "approvals"
-                      ? "Bản riêng tư: chủ không gian ghi nhận quyết định duyệt; chưa có luồng nhiều tài khoản."
-                      : filtered.length + " công việc phù hợp bộ lọc"}
+                    {page === 'approvals'
+                      ? 'Bản riêng tư: chủ không gian ghi nhận quyết định duyệt; chưa có luồng nhiều tài khoản.'
+                      : filtered.length + ' công việc phù hợp bộ lọc'}
                   </div>
                 </section>
               )}
-              {page === "calendar" && (
+              {page === 'calendar' && (
                 <section className="panel">
                   <div className="panel-heading">
                     <div>
@@ -1565,13 +1424,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       <button
                         className="icon-btn"
                         onClick={() =>
-                          setMonth(
-                            new Date(
-                              month.getFullYear(),
-                              month.getMonth() - 1,
-                              1,
-                            ),
-                          )
+                          setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
                         }
                       >
                         <ChevronLeft size={18} />
@@ -1582,71 +1435,47 @@ export default function Workspace({ userName }: { userName: string }) {
                       <button
                         className="icon-btn"
                         onClick={() =>
-                          setMonth(
-                            new Date(
-                              month.getFullYear(),
-                              month.getMonth() + 1,
-                              1,
-                            ),
-                          )
+                          setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
                         }
                       >
                         <ChevronRight size={18} />
                       </button>
                       <button
                         className="btn secondary compact"
-                        onClick={() => setMonth(new Date(today + "T12:00:00"))}
+                        onClick={() => setMonth(new Date(today + 'T12:00:00'))}
                       >
                         Hôm nay
                       </button>
                     </div>
                   </div>
                   <div className="calendar-grid">
-                    {[
-                      "Thứ 2",
-                      "Thứ 3",
-                      "Thứ 4",
-                      "Thứ 5",
-                      "Thứ 6",
-                      "Thứ 7",
-                      "Chủ nhật",
-                    ].map((x) => (
+                    {['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'].map((x) => (
                       <div className="calendar-weekday" key={x}>
                         {x}
                       </div>
                     ))}
                     {Array.from({ length: 42 }, (_, i) => {
-                      const date = new Date(
-                        month.getFullYear(),
-                        month.getMonth(),
-                        1,
-                      );
+                      const date = new Date(month.getFullYear(), month.getMonth(), 1);
                       date.setDate(1 - ((date.getDay() + 6) % 7) + i);
                       const day = [
                         date.getFullYear(),
-                        String(date.getMonth() + 1).padStart(2, "0"),
-                        String(date.getDate()).padStart(2, "0"),
-                      ].join("-");
+                        String(date.getMonth() + 1).padStart(2, '0'),
+                        String(date.getDate()).padStart(2, '0'),
+                      ].join('-');
                       return (
                         <div
                           key={day}
                           className={
-                            "calendar-day " +
-                            (date.getMonth() !== month.getMonth()
-                              ? "outside "
-                              : "") +
-                            (day === today ? "today" : "")
+                            'calendar-day ' +
+                            (date.getMonth() !== month.getMonth() ? 'outside ' : '') +
+                            (day === today ? 'today' : '')
                           }
                         >
                           <span>{date.getDate()}</span>
                           {tasks
                             .filter((t) => t.due === day)
                             .map((t) => (
-                              <button
-                                key={t.id}
-                                onClick={() => openTask(t)}
-                                title={t.title}
-                              >
+                              <button key={t.id} onClick={() => openTask(t)} title={t.title}>
                                 {t.title}
                               </button>
                             ))}
@@ -1660,7 +1489,7 @@ export default function Workspace({ userName }: { userName: string }) {
                   <TaskTable list={tasks.filter((t) => !t.due)} />
                 </section>
               )}
-              {page === "plans" && (
+              {page === 'plans' && (
                 <>
                   <div className="section-toolbar">
                     <span>{plans.length} kế hoạch</span>
@@ -1669,10 +1498,10 @@ export default function Workspace({ userName }: { userName: string }) {
                       onClick={() =>
                         setCatalog({
                           id: crypto.randomUUID(),
-                          kind: "plan",
-                          name: "",
-                          department: "",
-                          description: "",
+                          kind: 'plan',
+                          name: '',
+                          department: '',
+                          description: '',
                           review: false,
                         })
                       }
@@ -1697,12 +1526,11 @@ export default function Workspace({ userName }: { userName: string }) {
                           </button>
                         </div>
                         <h2>{p.name}</h2>
-                        <p>{p.description || "Chưa có mô tả"}</p>
+                        <p>{p.description || 'Chưa có mô tả'}</p>
                         {p.review && <Tag color="amber">Cần xác nhận</Tag>}
                         <footer>
                           <span>
-                            {tasks.filter((t) => t.plan === p.id).length} công
-                            việc được liên kết
+                            {tasks.filter((t) => t.plan === p.id).length} công việc được liên kết
                           </span>
                           <button
                             className="text-btn"
@@ -1724,7 +1552,7 @@ export default function Workspace({ userName }: { userName: string }) {
                   {!plans.length && <Empty />}
                 </>
               )}
-              {page === "departments" && (
+              {page === 'departments' && (
                 <>
                   <div className="section-toolbar">
                     <span>{departments.length} phòng ban hoạt động</span>
@@ -1733,10 +1561,10 @@ export default function Workspace({ userName }: { userName: string }) {
                       onClick={() =>
                         setCatalog({
                           id: crypto.randomUUID(),
-                          kind: "department",
-                          name: "",
-                          fullName: "",
-                          color: "#16846b",
+                          kind: 'department',
+                          name: '',
+                          fullName: '',
+                          color: '#16846b',
                           active: true,
                         })
                       }
@@ -1753,7 +1581,7 @@ export default function Workspace({ userName }: { userName: string }) {
                             className="catalog-icon"
                             style={{
                               color: d.color,
-                              background: d.color + "15",
+                              background: d.color + '15',
                             }}
                           >
                             <Building2 size={24} />
@@ -1770,30 +1598,18 @@ export default function Workspace({ userName }: { userName: string }) {
                         <p>{d.fullName}</p>
                         <div className="department-stats">
                           <div>
-                            <strong>
-                              {
-                                tasks.filter((t) => t.department === d.id)
-                                  .length
-                              }
-                            </strong>
+                            <strong>{tasks.filter((t) => t.department === d.id).length}</strong>
                             <span>Công việc</span>
                           </div>
                           <div>
-                            <strong>
-                              {
-                                people.filter((p) => p.department === d.id)
-                                  .length
-                              }
-                            </strong>
+                            <strong>{people.filter((p) => p.department === d.id).length}</strong>
                             <span>Nhân sự đã gán</span>
                           </div>
                           <div>
                             <strong>
                               {
                                 tasks.filter(
-                                  (t) =>
-                                    t.department === d.id &&
-                                    t.status === "Hoàn thành",
+                                  (t) => t.department === d.id && t.status === 'Hoàn thành',
                                 ).length
                               }
                             </strong>
@@ -1808,7 +1624,7 @@ export default function Workspace({ userName }: { userName: string }) {
                           <button
                             className="text-btn"
                             onClick={() => {
-                              go("tasks");
+                              go('tasks');
                               setDept(d.id);
                             }}
                           >
@@ -1820,29 +1636,25 @@ export default function Workspace({ userName }: { userName: string }) {
                   </div>
                 </>
               )}
-              {page === "people" && (
+              {page === 'people' && (
                 <section className="panel">
                   <div className="panel-heading">
                     <div>
                       <h2>
-                        Danh sách nhân sự{" "}
-                        <span className="count-badge">{people.length}</span>
+                        Danh sách nhân sự <span className="count-badge">{people.length}</span>
                       </h2>
-                      <p>
-                        Danh mục nhân sự không đồng nghĩa với tài khoản truy
-                        cập.
-                      </p>
+                      <p>Danh mục nhân sự không đồng nghĩa với tài khoản truy cập.</p>
                     </div>
                     <button
                       className="btn secondary"
                       onClick={() =>
                         setCatalog({
                           id: crypto.randomUUID(),
-                          kind: "person",
-                          name: "",
-                          department: "",
-                          position: "",
-                          email: "",
+                          kind: 'person',
+                          name: '',
+                          department: '',
+                          position: '',
+                          email: '',
                           active: true,
                         })
                       }
@@ -1860,10 +1672,7 @@ export default function Workspace({ userName }: { userName: string }) {
                         onChange={(e) => setSearch(e.target.value)}
                       />
                     </div>
-                    <select
-                      value={dept}
-                      onChange={(e) => setDept(e.target.value)}
-                    >
+                    <select value={dept} onChange={(e) => setDept(e.target.value)}>
                       <option value="">Tất cả phòng ban</option>
                       <option value="unassigned">Chưa xác định phòng</option>
                       {departments.map((d) => (
@@ -1889,21 +1698,15 @@ export default function Workspace({ userName }: { userName: string }) {
                         {people
                           .filter(
                             (p) =>
-                              p.name
-                                .toLowerCase()
-                                .includes(search.toLowerCase()) &&
+                              p.name.toLowerCase().includes(search.toLowerCase()) &&
                               (!dept ||
-                                (dept === "unassigned"
-                                  ? !p.department
-                                  : p.department === dept)),
+                                (dept === 'unassigned' ? !p.department : p.department === dept)),
                           )
                           .map((p) => (
                             <tr key={p.id} onClick={() => setCatalog({ ...p })}>
                               <td>
                                 <span className="person">
-                                  <span className="avatar">
-                                    {initials(p.name)}
-                                  </span>
+                                  <span className="avatar">{initials(p.name)}</span>
                                   <strong>{p.name}</strong>
                                 </span>
                               </td>
@@ -1912,11 +1715,9 @@ export default function Workspace({ userName }: { userName: string }) {
                                   <span className="muted">Chưa xác định</span>
                                 )}
                               </td>
-                              <td>{p.position || "—"}</td>
-                              <td>{p.email || "—"}</td>
-                              <td>
-                                {tasks.filter((t) => t.owner === p.id).length}
-                              </td>
+                              <td>{p.position || '—'}</td>
+                              <td>{p.email || '—'}</td>
+                              <td>{tasks.filter((t) => t.owner === p.id).length}</td>
                               <td>
                                 <ChevronRight size={16} />
                               </td>
@@ -1927,16 +1728,13 @@ export default function Workspace({ userName }: { userName: string }) {
                   </div>
                 </section>
               )}
-              {page === "chat" && (
+              {page === 'chat' && (
                 <section className="panel chat-layout">
                   <aside>
                     <h2>Kênh trao đổi</h2>
-                    {[
-                      { id: "general", name: "Trao đổi chung" },
-                      ...departments,
-                    ].map((d) => (
+                    {[{ id: 'general', name: 'Trao đổi chung' }, ...departments].map((d) => (
                       <button
-                        className={channel === d.id ? "active" : ""}
+                        className={channel === d.id ? 'active' : ''}
                         key={d.id}
                         onClick={() => setChannel(d.id)}
                       >
@@ -1947,26 +1745,21 @@ export default function Workspace({ userName }: { userName: string }) {
                     <div className="chat-info">
                       <ShieldCheck size={18} />
                       <p>
-                        Tin nhắn được lưu trên máy chủ trong không gian của bạn.
-                        Chưa có thành viên khác truy cập.
+                        Tin nhắn được lưu trên máy chủ trong không gian của bạn. Chưa có thành viên
+                        khác truy cập.
                       </p>
                     </div>
                   </aside>
                   <div className="chat-main">
                     <div className="panel-heading">
                       <h2>
-                        #{" "}
-                        {channel === "general"
-                          ? "Trao đổi chung"
-                          : department(channel)?.name}
+                        # {channel === 'general' ? 'Trao đổi chung' : department(channel)?.name}
                       </h2>
                       <Tag color="green">Riêng tư</Tag>
                     </div>
                     <div className="messages">
                       {rows
-                        .filter(
-                          (r) => r.kind === "message" && r.channel === channel,
-                        )
+                        .filter((r) => r.kind === 'message' && r.channel === channel)
                         .reverse()
                         .map((m) => (
                           <div className="message" key={m.id}>
@@ -1980,9 +1773,7 @@ export default function Workspace({ userName }: { userName: string }) {
                             </div>
                           </div>
                         ))}
-                      {!rows.some(
-                        (r) => r.kind === "message" && r.channel === channel,
-                      ) && (
+                      {!rows.some((r) => r.kind === 'message' && r.channel === channel) && (
                         <Empty
                           text="Bắt đầu một trao đổi"
                           sub="Ghi lại ý tưởng, cập nhật hoặc thông tin cần phối hợp."
@@ -1996,12 +1787,12 @@ export default function Workspace({ userName }: { userName: string }) {
                         if (
                           await save({
                             id: crypto.randomUUID(),
-                            kind: "message",
+                            kind: 'message',
                             channel,
                             text: chat,
                           })
                         )
-                          setChat("");
+                          setChat('');
                       }}
                     >
                       <textarea
@@ -2010,10 +1801,7 @@ export default function Workspace({ userName }: { userName: string }) {
                         onChange={(e) => setChat(e.target.value)}
                         maxLength={10000}
                       />
-                      <button
-                        className="btn primary"
-                        disabled={saving || !chat.trim()}
-                      >
+                      <button className="btn primary" disabled={saving || !chat.trim()}>
                         <Send size={17} />
                         Gửi
                       </button>
@@ -2021,15 +1809,12 @@ export default function Workspace({ userName }: { userName: string }) {
                   </div>
                 </section>
               )}
-              {page === "files" && (
+              {page === 'files' && (
                 <section className="panel">
                   <div className="panel-heading">
                     <div>
                       <h2>Tài liệu trong không gian</h2>
-                      <p>
-                        PDF, Word, Excel, CSV, văn bản và hình ảnh · Tối đa 10
-                        MB/tệp
-                      </p>
+                      <p>PDF, Word, Excel, CSV, văn bản và hình ảnh · Tối đa 10 MB/tệp</p>
                     </div>
                     <label className="btn primary">
                       <Upload size={16} />
@@ -2041,34 +1826,30 @@ export default function Workspace({ userName }: { userName: string }) {
                         disabled={saving}
                         onChange={(e) => {
                           if (e.target.files?.[0]) upload(e.target.files[0]);
-                          e.target.value = "";
+                          e.target.value = '';
                         }}
                       />
                     </label>
                   </div>
-                  <FileList list={rows.filter((r) => r.kind === "file")} />
+                  <FileList list={rows.filter((r) => r.kind === 'file')} />
                 </section>
               )}
-              {page === "reports" && (
+              {page === 'reports' && (
                 <>
                   <div className="notice">
                     <ShieldCheck size={21} />
                     <div>
                       <strong>Báo cáo từ dữ liệu hiện tại</strong>
                       <p>
-                        Đếm nhiệm vụ một lần theo phòng chủ trì. Các công việc
-                        cần xác minh được tách rõ; chưa có dữ liệu lịch sử để
-                        đánh giá năng suất.
+                        Đếm nhiệm vụ một lần theo phòng chủ trì. Các công việc cần xác minh được
+                        tách rõ; chưa có dữ liệu lịch sử để đánh giá năng suất.
                       </p>
                     </div>
                   </div>
                   <section className="panel">
                     <div className="panel-heading">
                       <h2>Tổng hợp theo phòng ban</h2>
-                      <button
-                        className="btn secondary"
-                        onClick={() => window.print()}
-                      >
+                      <button className="btn secondary" onClick={() => window.print()}>
                         <FileText size={16} />
                         In / lưu PDF
                       </button>
@@ -2087,16 +1868,9 @@ export default function Workspace({ userName }: { userName: string }) {
                           </tr>
                         </thead>
                         <tbody>
-                          {[
-                            ...departments,
-                            { id: "", name: "Chưa chọn phòng" },
-                          ].map((d) => {
-                            const all = tasks.filter(
-                                (t) => (t.department || "") === d.id,
-                              ),
-                              complete = all.filter(
-                                (t) => t.status === "Hoàn thành",
-                              ).length;
+                          {[...departments, { id: '', name: 'Chưa chọn phòng' }].map((d) => {
+                            const all = tasks.filter((t) => (t.department || '') === d.id),
+                              complete = all.filter((t) => t.status === 'Hoàn thành').length;
                             return (
                               <tr key={d.id}>
                                 <td>
@@ -2105,12 +1879,8 @@ export default function Workspace({ userName }: { userName: string }) {
                                 <td>{all.length}</td>
                                 <td>
                                   {
-                                    all.filter(
-                                      (t) =>
-                                        !["Hoàn thành", "Đã hủy"].includes(
-                                          t.status,
-                                        ),
-                                    ).length
+                                    all.filter((t) => !['Hoàn thành', 'Đã hủy'].includes(t.status))
+                                      .length
                                   }
                                 </td>
                                 <td>{complete}</td>
@@ -2118,10 +1888,8 @@ export default function Workspace({ userName }: { userName: string }) {
                                 <td>{all.filter((t) => t.review).length}</td>
                                 <td>
                                   {all.length
-                                    ? Math.round(
-                                        (complete / all.length) * 100,
-                                      ) + "%"
-                                    : "Chưa có dữ liệu"}
+                                    ? Math.round((complete / all.length) * 100) + '%'
+                                    : 'Chưa có dữ liệu'}
                                 </td>
                               </tr>
                             );
@@ -2130,8 +1898,8 @@ export default function Workspace({ userName }: { userName: string }) {
                       </table>
                     </div>
                     <div className="panel-footer">
-                      * Qua hạn tính từ hạn chót theo múi giờ Việt Nam; dữ liệu
-                      chưa xác minh có thể sai năm.
+                      * Qua hạn tính từ hạn chót theo múi giờ Việt Nam; dữ liệu chưa xác minh có thể
+                      sai năm.
                     </div>
                   </section>
                   <div className="dashboard-grid report-bottom">
@@ -2141,20 +1909,13 @@ export default function Workspace({ userName }: { userName: string }) {
                       </div>
                       <div className="quality-list">
                         {[
+                          ['Chưa có người phụ trách', tasks.filter((t) => !t.owner).length],
+                          ['Chưa có hạn chót', tasks.filter((t) => !t.due).length],
                           [
-                            "Chưa có người phụ trách",
-                            tasks.filter((t) => !t.owner).length,
+                            'Trạng thái chưa xác định',
+                            tasks.filter((t) => t.status === 'Chưa xác định').length,
                           ],
-                          [
-                            "Chưa có hạn chót",
-                            tasks.filter((t) => !t.due).length,
-                          ],
-                          [
-                            "Trạng thái chưa xác định",
-                            tasks.filter((t) => t.status === "Chưa xác định")
-                              .length,
-                          ],
-                          ["Đang chờ xác minh", review.length],
+                          ['Đang chờ xác minh', review.length],
                         ].map(([label, value]) => (
                           <div key={String(label)}>
                             <span>{label}</span>
@@ -2169,37 +1930,35 @@ export default function Workspace({ userName }: { userName: string }) {
                       </div>
                       <div className="definitions">
                         <p>
-                          <strong>Đang mở:</strong> chưa hoàn thành, chưa hủy và
-                          chưa lưu trữ.
+                          <strong>Đang mở:</strong> chưa hoàn thành, chưa hủy và chưa lưu trữ.
                         </p>
                         <p>
-                          <strong>Qua hạn:</strong> việc đang mở có hạn chót
-                          trước ngày hiện tại.
+                          <strong>Qua hạn:</strong> việc đang mở có hạn chót trước ngày hiện tại.
                         </p>
                         <p>
-                          <strong>Hoàn thành / tổng:</strong> số việc hoàn thành
-                          chia tổng số việc chưa lưu trữ, bao gồm việc đã hủy;
-                          đây là tỷ lệ trạng thái, không phải KPI năng suất.
+                          <strong>Hoàn thành / tổng:</strong> số việc hoàn thành chia tổng số việc
+                          chưa lưu trữ, bao gồm việc đã hủy; đây là tỷ lệ trạng thái, không phải KPI
+                          năng suất.
                         </p>
                         <p>
-                          <strong>Cần xác minh:</strong> chưa được người quản lý
-                          xác nhận dữ liệu nguồn.
+                          <strong>Cần xác minh:</strong> chưa được người quản lý xác nhận dữ liệu
+                          nguồn.
                         </p>
                       </div>
                     </section>
                   </div>
                 </>
               )}
-              {page === "history" && (
+              {page === 'history' && (
                 <section className="panel">
                   <div className="panel-heading">
                     <h2>Lịch sử thay đổi</h2>
                     <Tag>Không sửa trực tiếp</Tag>
                   </div>
-                  {rows.filter((r) => r.kind === "audit").length ? (
+                  {rows.filter((r) => r.kind === 'audit').length ? (
                     <div className="audit-list">
                       {rows
-                        .filter((r) => r.kind === "audit")
+                        .filter((r) => r.kind === 'audit')
                         .map((a) => (
                           <div key={a.id}>
                             <span className="activity-dot" />
@@ -2209,16 +1968,12 @@ export default function Workspace({ userName }: { userName: string }) {
                               </strong>
                               <p>
                                 {a.author} · {fmtTime(a.updated)}
-                                {a.reason && " · Lý do: " + a.reason}
+                                {a.reason && ' · Lý do: ' + a.reason}
                               </p>
                               <details>
                                 <summary>Xem nội dung thay đổi</summary>
                                 <pre>
-                                  {JSON.stringify(
-                                    { truoc: a.before, sau: a.after },
-                                    null,
-                                    2,
-                                  )}
+                                  {JSON.stringify({ truoc: a.before, sau: a.after }, null, 2)}
                                 </pre>
                               </details>
                             </div>
@@ -2233,9 +1988,9 @@ export default function Workspace({ userName }: { userName: string }) {
                   )}
                 </section>
               )}
-              {page === "organizations" && <OrganizationManager />}
-              {page === "shared-tasks" && <SharedTasksPanel />}
-              {page === "settings" && (
+              {page === 'organizations' && <OrganizationManager />}
+              {page === 'shared-tasks' && <SharedTasksPanel />}
+              {page === 'settings' && (
                 <div className="settings-grid">
                   <section className="panel">
                     <div className="panel-heading">
@@ -2250,31 +2005,26 @@ export default function Workspace({ userName }: { userName: string }) {
                           max="30"
                           defaultValue={prefs.remindDays}
                           onBlur={(e) => {
-                            const n = Math.max(
-                              0,
-                              Math.min(30, Number(e.target.value)),
-                            );
-                            if (n !== prefs.remindDays)
-                              save({ ...prefs, remindDays: n });
+                            const n = Math.max(0, Math.min(30, Number(e.target.value)));
+                            if (n !== prefs.remindDays) save({ ...prefs, remindDays: n });
                           }}
                         />
                       </label>
                       <p className="help">
-                        Cảnh báo trong ứng dụng được tính khi mở và tự cập nhật
-                        mỗi 30 giây. Email/push khi đóng ứng dụng chưa được cấu
-                        hình.
+                        Cảnh báo trong ứng dụng được tính khi mở và tự cập nhật mỗi 30 giây.
+                        Email/push khi đóng ứng dụng chưa được cấu hình.
                       </p>
                       <hr />
                       <h3>Xuất dữ liệu</h3>
                       <p>
-                        Tải toàn bộ bản ghi dạng JSON để lưu đối chiếu. Tệp đính
-                        kèm cần tải riêng ở mục Tài liệu.
+                        Tải toàn bộ bản ghi dạng JSON để lưu đối chiếu. Tệp đính kèm cần tải riêng ở
+                        mục Tài liệu.
                       </p>
                       <button
                         className="btn secondary"
                         onClick={() =>
                           download(
-                            "TEAM360-du-lieu.json",
+                            'TEAM360-du-lieu.json',
                             JSON.stringify(
                               {
                                 exportedAt: new Date().toISOString(),
@@ -2283,31 +2033,27 @@ export default function Workspace({ userName }: { userName: string }) {
                               null,
                               2,
                             ),
-                            "application/json",
+                            'application/json',
                           )
                         }
                       >
                         <Download size={16} />
                         Xuất JSON
                       </button>
-                      <button
-                        className="btn secondary"
-                        onClick={() => importRef.current?.click()}
-                      >
+                      <button className="btn secondary" onClick={() => importRef.current?.click()}>
                         <Upload size={16} />
                         Nhập công việc JSON
                       </button>
                       <hr />
                       <h3>Phạm vi phiên bản hiện tại</h3>
                       <p>
-                        Dữ liệu lưu bền vững trên máy chủ, gắn với tài khoản
-                        đăng nhập của bạn. Bản này chưa có chia sẻ nhiều tài
-                        khoản, quyền theo phòng, chat đa người, nhắc email tự
-                        động, AI, công việc định kỳ hoặc phụ thuộc Gantt.
+                        Dữ liệu lưu bền vững trên máy chủ, gắn với tài khoản đăng nhập của bạn. Bản
+                        này chưa có chia sẻ nhiều tài khoản, quyền theo phòng, chat đa người, nhắc
+                        email tự động, AI, công việc định kỳ hoặc phụ thuộc Gantt.
                       </p>
                       <p>
-                        Không thay đổi dữ liệu gốc chưa được xác nhận. Dùng chế
-                        độ “Cần xác minh” để rà soát trước khi đánh giá.
+                        Không thay đổi dữ liệu gốc chưa được xác nhận. Dùng chế độ “Cần xác minh” để
+                        rà soát trước khi đánh giá.
                       </p>
                     </div>
                   </section>
@@ -2325,13 +2071,13 @@ export default function Workspace({ userName }: { userName: string }) {
                               <div>
                                 <strong>{r.title || r.name}</strong>
                                 <small>
-                                  {r.kind === "task"
-                                    ? "Công việc"
-                                    : r.kind === "person"
-                                      ? "Nhân sự"
-                                      : r.kind === "plan"
-                                        ? "Kế hoạch"
-                                        : "Phòng ban"}
+                                  {r.kind === 'task'
+                                    ? 'Công việc'
+                                    : r.kind === 'person'
+                                      ? 'Nhân sự'
+                                      : r.kind === 'plan'
+                                        ? 'Kế hoạch'
+                                        : 'Phòng ban'}
                                 </small>
                               </div>
                               <button
@@ -2361,8 +2107,7 @@ export default function Workspace({ userName }: { userName: string }) {
             </span>
             <span>
               <span className="live-dot" />
-              {error ? "Chưa kết nối" : "Lưu trữ trên máy chủ"} <i>·</i> Giờ
-              Việt Nam
+              {error ? 'Chưa kết nối' : 'Lưu trữ trên máy chủ'} <i>·</i> Giờ Việt Nam
             </span>
           </footer>
         </main>
@@ -2374,15 +2119,12 @@ export default function Workspace({ userName }: { userName: string }) {
         hidden
         onChange={(e) => {
           if (e.target.files?.[0]) importFile(e.target.files[0]);
-          e.target.value = "";
+          e.target.value = '';
         }}
       />
       {notifications && (
         <>
-          <div
-            className="popover-shade"
-            onClick={() => setNotifications(false)}
-          />
+          <div className="popover-shade" onClick={() => setNotifications(false)} />
           <section className="notification-panel panel">
             <div className="panel-heading">
               <h2>Thông báo công việc</h2>
@@ -2410,9 +2152,7 @@ export default function Workspace({ userName }: { userName: string }) {
                   <div>
                     <strong>{a.task.title}</strong>
                     <small>{a.text}</small>
-                    {a.task.review && (
-                      <small className="amber-text">Dữ liệu cần xác minh</small>
-                    )}
+                    {a.task.review && <small className="amber-text">Dữ liệu cần xác minh</small>}
                   </div>
                 </button>
               ))
@@ -2440,10 +2180,8 @@ export default function Workspace({ userName }: { userName: string }) {
           >
             <div className="modal-heading">
               <div>
-                <span className="eyebrow">
-                  {edit.version ? edit.code : "TẠO CÔNG VIỆC"}
-                </span>
-                <h2>{edit.version ? "Chi tiết công việc" : "Công việc mới"}</h2>
+                <span className="eyebrow">{edit.version ? edit.code : 'TẠO CÔNG VIỆC'}</span>
+                <h2>{edit.version ? 'Chi tiết công việc' : 'Công việc mới'}</h2>
               </div>
               <div>
                 {edit.version && (
@@ -2457,12 +2195,12 @@ export default function Workspace({ userName }: { userName: string }) {
                           id: crypto.randomUUID(),
                           code: blankTask().code,
                           version: undefined,
-                          title: edit.title + " (bản sao)",
+                          title: edit.title + ' (bản sao)',
                           completedAt: null,
-                          status: "Chưa bắt đầu",
+                          status: 'Chưa bắt đầu',
                           progress: 0,
                         });
-                        setTab("detail");
+                        setTab('detail');
                       }}
                     >
                       <Copy size={18} />
@@ -2477,52 +2215,42 @@ export default function Workspace({ userName }: { userName: string }) {
                     </button>
                   </>
                 )}
-                <button
-                  className="icon-btn"
-                  onClick={() => setEdit(null)}
-                  aria-label="Đóng"
-                >
+                <button className="icon-btn" onClick={() => setEdit(null)} aria-label="Đóng">
                   <X size={21} />
                 </button>
               </div>
             </div>
             <div className="modal-tabs">
               {[
-                ["detail", "Thông tin"],
-                ["comments", "Trao đổi"],
-                ["files", "Tài liệu"],
-                ["audit", "Lịch sử"],
+                ['detail', 'Thông tin'],
+                ['comments', 'Trao đổi'],
+                ['files', 'Tài liệu'],
+                ['audit', 'Lịch sử'],
               ].map(([id, label]) => (
                 <button
                   key={id}
-                  className={tab === id ? "active" : ""}
-                  disabled={!edit.version && id !== "detail"}
+                  className={tab === id ? 'active' : ''}
+                  disabled={!edit.version && id !== 'detail'}
                   onClick={() => setTab(id)}
                 >
                   {label}
-                  {id === "comments" && (
+                  {id === 'comments' && (
                     <small>
-                      {
-                        rows.filter(
-                          (r) => r.kind === "comment" && r.taskId === edit.id,
-                        ).length
-                      }
+                      {rows.filter((r) => r.kind === 'comment' && r.taskId === edit.id).length}
                     </small>
                   )}
                 </button>
               ))}
             </div>
             <div className="modal-body">
-              {tab === "detail" && (
+              {tab === 'detail' && (
                 <>
                   <label className="field full">
                     Tên công việc <span>*</span>
                     <textarea
                       className="title-input"
                       value={edit.title}
-                      onChange={(e) =>
-                        setEdit({ ...edit, title: e.target.value })
-                      }
+                      onChange={(e) => setEdit({ ...edit, title: e.target.value })}
                       placeholder="Cần thực hiện điều gì?"
                       rows={2}
                     />
@@ -2532,10 +2260,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       <AlertTriangle size={18} />
                       <div>
                         <strong>Cần xác minh dữ liệu gốc</strong>
-                        <p>
-                          {edit.reviewNote ||
-                            "Kiểm tra thông tin trước khi sử dụng."}
-                        </p>
+                        <p>{edit.reviewNote || 'Kiểm tra thông tin trước khi sử dụng.'}</p>
                       </div>
                     </div>
                   )}
@@ -2544,9 +2269,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       Phòng chủ trì
                       <select
                         value={edit.department}
-                        onChange={(e) =>
-                          setEdit({ ...edit, department: e.target.value })
-                        }
+                        onChange={(e) => setEdit({ ...edit, department: e.target.value })}
                       >
                         <option value="">Chưa chọn</option>
                         {departments.map((d) => (
@@ -2560,9 +2283,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       Người chịu trách nhiệm
                       <select
                         value={edit.owner}
-                        onChange={(e) =>
-                          setEdit({ ...edit, owner: e.target.value })
-                        }
+                        onChange={(e) => setEdit({ ...edit, owner: e.target.value })}
                       >
                         <option value="">Chưa phân công</option>
                         {people.map((p) => (
@@ -2576,9 +2297,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       Trạng thái
                       <select
                         value={edit.status}
-                        onChange={(e) =>
-                          setEdit({ ...edit, status: e.target.value })
-                        }
+                        onChange={(e) => setEdit({ ...edit, status: e.target.value })}
                       >
                         {statuses.map((s) => (
                           <option key={s}>{s}</option>
@@ -2589,9 +2308,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       Mức độ ưu tiên
                       <select
                         value={edit.priority}
-                        onChange={(e) =>
-                          setEdit({ ...edit, priority: e.target.value })
-                        }
+                        onChange={(e) => setEdit({ ...edit, priority: e.target.value })}
                       >
                         {priorities.map((s) => (
                           <option key={s}>{s}</option>
@@ -2602,29 +2319,23 @@ export default function Workspace({ userName }: { userName: string }) {
                       Ngày bắt đầu
                       <input
                         type="date"
-                        value={edit.start || ""}
-                        onChange={(e) =>
-                          setEdit({ ...edit, start: e.target.value })
-                        }
+                        value={edit.start || ''}
+                        onChange={(e) => setEdit({ ...edit, start: e.target.value })}
                       />
                     </label>
                     <label className="field">
                       Hạn hoàn thành
                       <input
                         type="date"
-                        value={edit.due || ""}
-                        onChange={(e) =>
-                          setEdit({ ...edit, due: e.target.value })
-                        }
+                        value={edit.due || ''}
+                        onChange={(e) => setEdit({ ...edit, due: e.target.value })}
                       />
                     </label>
                     <label className="field">
                       Kế hoạch
                       <select
-                        value={edit.plan || ""}
-                        onChange={(e) =>
-                          setEdit({ ...edit, plan: e.target.value })
-                        }
+                        value={edit.plan || ''}
+                        onChange={(e) => setEdit({ ...edit, plan: e.target.value })}
                       >
                         <option value="">Không gắn kế hoạch</option>
                         {plans.map((p) => (
@@ -2637,10 +2348,8 @@ export default function Workspace({ userName }: { userName: string }) {
                     <label className="field">
                       Loại công việc
                       <input
-                        value={edit.type || ""}
-                        onChange={(e) =>
-                          setEdit({ ...edit, type: e.target.value })
-                        }
+                        value={edit.type || ''}
+                        onChange={(e) => setEdit({ ...edit, type: e.target.value })}
                         placeholder="Ví dụ: Báo cáo, kế hoạch"
                       />
                     </label>
@@ -2659,10 +2368,8 @@ export default function Workspace({ userName }: { userName: string }) {
                     Mô tả / Nội dung chỉ đạo
                     <textarea
                       rows={4}
-                      value={edit.description || ""}
-                      onChange={(e) =>
-                        setEdit({ ...edit, description: e.target.value })
-                      }
+                      value={edit.description || ''}
+                      onChange={(e) => setEdit({ ...edit, description: e.target.value })}
                     />
                   </label>
                   <div className="field">
@@ -2675,9 +2382,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       min="0"
                       max="100"
                       value={edit.progress}
-                      onChange={(e) =>
-                        setEdit({ ...edit, progress: Number(e.target.value) })
-                      }
+                      onChange={(e) => setEdit({ ...edit, progress: Number(e.target.value) })}
                     />
                   </div>
                   <div className="checklist">
@@ -2692,7 +2397,7 @@ export default function Workspace({ userName }: { userName: string }) {
                               ...(edit.checklist || []),
                               {
                                 id: crypto.randomUUID(),
-                                text: "",
+                                text: '',
                                 done: false,
                               },
                             ],
@@ -2711,11 +2416,8 @@ export default function Workspace({ userName }: { userName: string }) {
                           onChange={(e) =>
                             setEdit({
                               ...edit,
-                              checklist: edit.checklist.map(
-                                (x: Row, n: number) =>
-                                  n === i
-                                    ? { ...x, done: e.target.checked }
-                                    : x,
+                              checklist: edit.checklist.map((x: Row, n: number) =>
+                                n === i ? { ...x, done: e.target.checked } : x,
                               ),
                             })
                           }
@@ -2726,9 +2428,8 @@ export default function Workspace({ userName }: { userName: string }) {
                           onChange={(e) =>
                             setEdit({
                               ...edit,
-                              checklist: edit.checklist.map(
-                                (x: Row, n: number) =>
-                                  n === i ? { ...x, text: e.target.value } : x,
+                              checklist: edit.checklist.map((x: Row, n: number) =>
+                                n === i ? { ...x, text: e.target.value } : x,
                               ),
                             })
                           }
@@ -2738,9 +2439,7 @@ export default function Workspace({ userName }: { userName: string }) {
                           onClick={() =>
                             setEdit({
                               ...edit,
-                              checklist: edit.checklist.filter(
-                                (_: any, n: number) => n !== i,
-                              ),
+                              checklist: edit.checklist.filter((_: any, n: number) => n !== i),
                             })
                           }
                         >
@@ -2752,22 +2451,18 @@ export default function Workspace({ userName }: { userName: string }) {
                   <label className="field">
                     Kết quả / Bằng chứng hoàn thành
                     <textarea
-                      value={edit.result || ""}
+                      value={edit.result || ''}
                       rows={3}
-                      onChange={(e) =>
-                        setEdit({ ...edit, result: e.target.value })
-                      }
+                      onChange={(e) => setEdit({ ...edit, result: e.target.value })}
                       placeholder="Bắt buộc khi trình duyệt hoặc hoàn thành"
                     />
                   </label>
-                  {edit.status === "Đã hủy" && (
+                  {edit.status === 'Đã hủy' && (
                     <label className="field">
                       Lý do hủy
                       <textarea
-                        value={edit.cancelReason || ""}
-                        onChange={(e) =>
-                          setEdit({ ...edit, cancelReason: e.target.value })
-                        }
+                        value={edit.cancelReason || ''}
+                        onChange={(e) => setEdit({ ...edit, cancelReason: e.target.value })}
                       />
                     </label>
                   )}
@@ -2775,9 +2470,7 @@ export default function Workspace({ userName }: { userName: string }) {
                     <input
                       type="checkbox"
                       checked={!edit.review}
-                      onChange={(e) =>
-                        setEdit({ ...edit, review: !e.target.checked })
-                      }
+                      onChange={(e) => setEdit({ ...edit, review: !e.target.checked })}
                     />
                     Thông tin công việc đã được kiểm tra và xác nhận
                   </label>
@@ -2789,13 +2482,11 @@ export default function Workspace({ userName }: { userName: string }) {
                   )}
                 </>
               )}
-              {tab === "comments" && (
+              {tab === 'comments' && (
                 <>
                   <div className="comments">
                     {rows
-                      .filter(
-                        (r) => r.kind === "comment" && r.taskId === edit.id,
-                      )
+                      .filter((r) => r.kind === 'comment' && r.taskId === edit.id)
                       .reverse()
                       .map((c) => (
                         <div className="message" key={c.id}>
@@ -2809,9 +2500,7 @@ export default function Workspace({ userName }: { userName: string }) {
                           </div>
                         </div>
                       ))}
-                    {!rows.some(
-                      (r) => r.kind === "comment" && r.taskId === edit.id,
-                    ) && (
+                    {!rows.some((r) => r.kind === 'comment' && r.taskId === edit.id) && (
                       <Empty
                         text="Chưa có trao đổi"
                         sub="Ghi chú tiến độ hoặc thông tin cần phối hợp tại đây."
@@ -2825,12 +2514,12 @@ export default function Workspace({ userName }: { userName: string }) {
                       if (
                         await save({
                           id: crypto.randomUUID(),
-                          kind: "comment",
+                          kind: 'comment',
                           taskId: edit.id,
                           text: note,
                         })
                       )
-                        setNote("");
+                        setNote('');
                     }}
                   >
                     <textarea
@@ -2838,47 +2527,37 @@ export default function Workspace({ userName }: { userName: string }) {
                       onChange={(e) => setNote(e.target.value)}
                       placeholder="Viết bình luận..."
                     />
-                    <button
-                      className="btn primary"
-                      disabled={saving || !note.trim()}
-                    >
+                    <button className="btn primary" disabled={saving || !note.trim()}>
                       <Send size={16} />
                       Gửi
                     </button>
                   </form>
                 </>
               )}
-              {tab === "files" && (
+              {tab === 'files' && (
                 <>
                   <label className="upload-zone">
                     <Upload size={25} />
                     <strong>Chọn tệp để đính kèm</strong>
-                    <span>
-                      Tối đa 10 MB · PDF, Word, Excel, văn bản, hình ảnh
-                    </span>
+                    <span>Tối đa 10 MB · PDF, Word, Excel, văn bản, hình ảnh</span>
                     <input
                       type="file"
                       hidden
                       disabled={saving}
                       accept=".pdf,.docx,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp"
                       onChange={(e) => {
-                        if (e.target.files?.[0])
-                          upload(e.target.files[0], edit.id);
-                        e.target.value = "";
+                        if (e.target.files?.[0]) upload(e.target.files[0], edit.id);
+                        e.target.value = '';
                       }}
                     />
                   </label>
-                  <FileList
-                    list={rows.filter(
-                      (r) => r.kind === "file" && r.taskId === edit.id,
-                    )}
-                  />
+                  <FileList list={rows.filter((r) => r.kind === 'file' && r.taskId === edit.id)} />
                 </>
               )}
-              {tab === "audit" && (
+              {tab === 'audit' && (
                 <div className="audit-list">
                   {rows
-                    .filter((r) => r.kind === "audit" && r.entityId === edit.id)
+                    .filter((r) => r.kind === 'audit' && r.entityId === edit.id)
                     .map((a) => (
                       <div key={a.id}>
                         <span className="activity-dot" />
@@ -2887,48 +2566,32 @@ export default function Workspace({ userName }: { userName: string }) {
                             {a.action} bởi {a.author}
                           </strong>
                           <p>
-                            {fmtTime(a.updated)} {a.reason && "· " + a.reason}
+                            {fmtTime(a.updated)} {a.reason && '· ' + a.reason}
                           </p>
                           <details>
                             <summary>Xem chi tiết</summary>
-                            <pre>
-                              {JSON.stringify(
-                                { truoc: a.before, sau: a.after },
-                                null,
-                                2,
-                              )}
-                            </pre>
+                            <pre>{JSON.stringify({ truoc: a.before, sau: a.after }, null, 2)}</pre>
                           </details>
                         </div>
                       </div>
                     ))}
-                  {!rows.some(
-                    (r) => r.kind === "audit" && r.entityId === edit.id,
-                  ) && <Empty text="Chưa có thay đổi sau khi nhập" />}
+                  {!rows.some((r) => r.kind === 'audit' && r.entityId === edit.id) && (
+                    <Empty text="Chưa có thay đổi sau khi nhập" />
+                  )}
                 </div>
               )}
             </div>
             <div className="modal-footer">
               <span>
-                {edit.version
-                  ? "Phiên bản " + edit.version
-                  : "Lưu vào không gian riêng tư"}
+                {edit.version ? 'Phiên bản ' + edit.version : 'Lưu vào không gian riêng tư'}
               </span>
               <div>
                 <button className="btn secondary" onClick={() => setEdit(null)}>
                   Đóng
                 </button>
-                {tab === "detail" && (
-                  <button
-                    className="btn primary"
-                    disabled={saving}
-                    onClick={submitTask}
-                  >
-                    {saving ? (
-                      <RefreshCw size={16} className="spin" />
-                    ) : (
-                      <Check size={17} />
-                    )}
+                {tab === 'detail' && (
+                  <button className="btn primary" disabled={saving} onClick={submitTask}>
+                    {saving ? <RefreshCw size={16} className="spin" /> : <Check size={17} />}
                     Lưu công việc
                   </button>
                 )}
@@ -2947,12 +2610,12 @@ export default function Workspace({ userName }: { userName: string }) {
           >
             <div className="modal-heading">
               <h2>
-                {catalog.version ? "Chỉnh sửa" : "Thêm"}{" "}
-                {catalog.kind === "person"
-                  ? "nhân sự"
-                  : catalog.kind === "plan"
-                    ? "kế hoạch"
-                    : "phòng ban"}
+                {catalog.version ? 'Chỉnh sửa' : 'Thêm'}{' '}
+                {catalog.kind === 'person'
+                  ? 'nhân sự'
+                  : catalog.kind === 'plan'
+                    ? 'kế hoạch'
+                    : 'phòng ban'}
               </h2>
               <button className="icon-btn" onClick={() => setCatalog(null)}>
                 <X size={20} />
@@ -2963,30 +2626,24 @@ export default function Workspace({ userName }: { userName: string }) {
                 Tên <span>*</span>
                 <input
                   value={catalog.name}
-                  onChange={(e) =>
-                    setCatalog({ ...catalog, name: e.target.value })
-                  }
+                  onChange={(e) => setCatalog({ ...catalog, name: e.target.value })}
                 />
               </label>
-              {catalog.kind === "department" ? (
+              {catalog.kind === 'department' ? (
                 <>
                   <label className="field">
                     Tên đầy đủ
                     <input
-                      value={catalog.fullName || ""}
-                      onChange={(e) =>
-                        setCatalog({ ...catalog, fullName: e.target.value })
-                      }
+                      value={catalog.fullName || ''}
+                      onChange={(e) => setCatalog({ ...catalog, fullName: e.target.value })}
                     />
                   </label>
                   <label className="field">
                     Màu đại diện
                     <input
                       type="color"
-                      value={catalog.color || "#16846b"}
-                      onChange={(e) =>
-                        setCatalog({ ...catalog, color: e.target.value })
-                      }
+                      value={catalog.color || '#16846b'}
+                      onChange={(e) => setCatalog({ ...catalog, color: e.target.value })}
                     />
                   </label>
                 </>
@@ -2994,10 +2651,8 @@ export default function Workspace({ userName }: { userName: string }) {
                 <label className="field">
                   Phòng ban
                   <select
-                    value={catalog.department || ""}
-                    onChange={(e) =>
-                      setCatalog({ ...catalog, department: e.target.value })
-                    }
+                    value={catalog.department || ''}
+                    onChange={(e) => setCatalog({ ...catalog, department: e.target.value })}
                   >
                     <option value="">Chưa xác định</option>
                     {departments.map((d) => (
@@ -3008,51 +2663,41 @@ export default function Workspace({ userName }: { userName: string }) {
                   </select>
                 </label>
               )}
-              {catalog.kind === "person" && (
+              {catalog.kind === 'person' && (
                 <>
                   <label className="field">
                     Chức danh
                     <input
-                      value={catalog.position || ""}
-                      onChange={(e) =>
-                        setCatalog({ ...catalog, position: e.target.value })
-                      }
+                      value={catalog.position || ''}
+                      onChange={(e) => setCatalog({ ...catalog, position: e.target.value })}
                     />
                   </label>
                   <label className="field">
                     Email liên hệ
                     <input
                       type="email"
-                      value={catalog.email || ""}
-                      onChange={(e) =>
-                        setCatalog({ ...catalog, email: e.target.value })
-                      }
+                      value={catalog.email || ''}
+                      onChange={(e) => setCatalog({ ...catalog, email: e.target.value })}
                     />
                   </label>
-                  <p className="help">
-                    Lưu email không gửi lời mời và không cấp quyền truy cập.
-                  </p>
+                  <p className="help">Lưu email không gửi lời mời và không cấp quyền truy cập.</p>
                 </>
               )}
-              {catalog.kind === "plan" && (
+              {catalog.kind === 'plan' && (
                 <>
                   <label className="field">
                     Mô tả
                     <textarea
                       rows={4}
-                      value={catalog.description || ""}
-                      onChange={(e) =>
-                        setCatalog({ ...catalog, description: e.target.value })
-                      }
+                      value={catalog.description || ''}
+                      onChange={(e) => setCatalog({ ...catalog, description: e.target.value })}
                     />
                   </label>
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={!catalog.review}
-                      onChange={(e) =>
-                        setCatalog({ ...catalog, review: !e.target.checked })
-                      }
+                      onChange={(e) => setCatalog({ ...catalog, review: !e.target.checked })}
                     />
                     Đã xác nhận kế hoạch và năm áp dụng
                   </label>
@@ -3097,37 +2742,27 @@ export default function Workspace({ userName }: { userName: string }) {
             </div>
             <div className="modal-body">
               <p>
-                {importRows.length} công việc trong file. ID đã có sẽ được bỏ
-                qua để tránh trùng.
+                {importRows.length} công việc trong file. ID đã có sẽ được bỏ qua để tránh trùng.
               </p>
               <p>
-                Phòng ban và người phụ trách phải đã tồn tại trong không gian
-                này. Nhập JSON công việc không khôi phục tệp đính kèm.
+                Phòng ban và người phụ trách phải đã tồn tại trong không gian này. Nhập JSON công
+                việc không khôi phục tệp đính kèm.
               </p>
               {importRows.map((t) => (
                 <div className="import-row" key={t.id}>
                   <span>{t.title}</span>
-                  <Tag
-                    color={rows.some((r) => r.id === t.id) ? "gray" : "green"}
-                  >
-                    {rows.some((r) => r.id === t.id) ? "Bỏ qua" : "Tạo mới"}
+                  <Tag color={rows.some((r) => r.id === t.id) ? 'gray' : 'green'}>
+                    {rows.some((r) => r.id === t.id) ? 'Bỏ qua' : 'Tạo mới'}
                   </Tag>
                 </div>
               ))}
               {importError && <p className="red-text">{importError}</p>}
             </div>
             <div className="modal-footer">
-              <button
-                className="btn secondary"
-                onClick={() => setImportRows(null)}
-              >
+              <button className="btn secondary" onClick={() => setImportRows(null)}>
                 Hủy
               </button>
-              <button
-                className="btn primary"
-                disabled={saving}
-                onClick={doImport}
-              >
+              <button className="btn primary" disabled={saving} onClick={doImport}>
                 Xác nhận nhập
               </button>
             </div>
@@ -3138,7 +2773,7 @@ export default function Workspace({ userName }: { userName: string }) {
         <div className="toast" role="status">
           <CheckCircle2 size={19} />
           {toast}
-          <button onClick={() => setToast("")} aria-label="Đóng thông báo">
+          <button onClick={() => setToast('')} aria-label="Đóng thông báo">
             <X size={16} />
           </button>
         </div>

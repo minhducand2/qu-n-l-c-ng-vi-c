@@ -1,5 +1,5 @@
-"use client";
-import { useCallback, useEffect, useState } from "react";
+'use client';
+import { useCallback, useEffect, useState } from 'react';
 
 type Workspace = { id: string; name: string; role: string };
 type Person = {
@@ -12,26 +12,23 @@ type Person = {
 };
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
-    cache: "no-store",
-    credentials: "same-origin",
+    cache: 'no-store',
+    credentials: 'same-origin',
     ...init,
   });
   const body: unknown = await response.json();
-  if (!response.ok)
-    throw Error(
-      (body as { error?: string }).error || `Lỗi API ${response.status}`,
-    );
+  if (!response.ok) throw Error((body as { error?: string }).error || `Lỗi API ${response.status}`);
   return body as T;
 }
 export default function DirectoryPage() {
   const [spaces, setSpaces] = useState<Workspace[]>([]);
-  const [workspaceId, setWorkspaceId] = useState("");
+  const [workspaceId, setWorkspaceId] = useState('');
   const [people, setPeople] = useState<Person[]>([]);
-  const [name, setName] = useState("");
+  const [name, setName] = useState('');
   const [departments, setDepartments] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const workspace = spaces.find((w) => w.id === workspaceId);
   const load = useCallback(async (id: string) => {
     const data = await request<{ members: Person[] }>(
@@ -39,23 +36,20 @@ export default function DirectoryPage() {
     );
     setPeople(data.members || []);
     setDepartments(
-      Object.fromEntries(
-        (data.members || []).map((p) => [p.userId, p.departmentName || ""]),
-      ),
+      Object.fromEntries((data.members || []).map((p) => [p.userId, p.departmentName || ''])),
     );
   }, []);
   useEffect(() => {
     let active = true;
-    void request<{ workspaces: Workspace[] }>("/api/workspaces")
+    void request<{ workspaces: Workspace[] }>('/api/workspaces')
       .then((d) => {
         if (!active) return;
         const list = d.workspaces || [];
         setSpaces(list);
-        setWorkspaceId(list[0]?.id || "");
+        setWorkspaceId(list[0]?.id || '');
       })
       .catch((e) => {
-        if (active)
-          setError(e instanceof Error ? e.message : "Không tải được tổ chức.");
+        if (active) setError(e instanceof Error ? e.message : 'Không tải được tổ chức.');
       });
     return () => {
       active = false;
@@ -67,35 +61,32 @@ export default function DirectoryPage() {
       return;
     }
     void load(workspaceId).catch((e) =>
-      setError(e instanceof Error ? e.message : "Không tải được danh bạ."),
+      setError(e instanceof Error ? e.message : 'Không tải được danh bạ.'),
     );
   }, [workspaceId, load]);
-  const submit = async (kind: "claim" | "department", userId?: string) => {
+  const submit = async (kind: 'claim' | 'department', userId?: string) => {
     if (!workspaceId || busy) return;
     setBusy(true);
-    setError("");
-    setNotice("");
+    setError('');
+    setNotice('');
     try {
       const data =
-        kind === "claim"
+        kind === 'claim'
           ? { displayName: name }
-          : { userId, departmentName: departments[userId || ""] || "" };
-      await request(
-        `/api/workspaces/${encodeURIComponent(workspaceId)}/directory`,
-        {
-          method: kind === "claim" ? "POST" : "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
-        },
-      );
+          : { userId, departmentName: departments[userId || ''] || '' };
+      await request(`/api/workspaces/${encodeURIComponent(workspaceId)}/directory`, {
+        method: kind === 'claim' ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
       await load(workspaceId);
       setNotice(
-        kind === "claim"
-          ? "Đã xác nhận tên hiển thị của tài khoản đang đăng nhập."
-          : "Đã cập nhật nhãn phòng ban.",
+        kind === 'claim'
+          ? 'Đã xác nhận tên hiển thị của tài khoản đang đăng nhập.'
+          : 'Đã cập nhật nhãn phòng ban.',
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không lưu được dữ liệu.");
+      setError(e instanceof Error ? e.message : 'Không lưu được dữ liệu.');
     } finally {
       setBusy(false);
     }
@@ -104,24 +95,24 @@ export default function DirectoryPage() {
     <main
       style={{
         maxWidth: 1100,
-        margin: "36px auto",
+        margin: '36px auto',
         padding: 20,
-        fontFamily: "system-ui, sans-serif",
-        color: "#1e293b",
+        fontFamily: 'system-ui, sans-serif',
+        color: '#1e293b',
       }}
     >
       <p>
-        <a href="/" style={{ color: "#087e74" }}>
+        <a href="/" style={{ color: '#087e74' }}>
           ← Trở lại TEAM360
         </a>
       </p>
       <h1>Danh bạ nhân sự theo tổ chức</h1>
-      <p style={{ color: "#64748b" }}>
-        Mỗi người tự xác nhận tên hiển thị bằng tài khoản đang đăng nhập. Admin
-        chỉ gán nhãn phòng ban; chưa liên kết dữ liệu nhân sự từ Excel.
+      <p style={{ color: '#64748b' }}>
+        Mỗi người tự xác nhận tên hiển thị bằng tài khoản đang đăng nhập. Admin chỉ gán nhãn phòng
+        ban; chưa liên kết dữ liệu nhân sự từ Excel.
       </p>
       <label>
-        Chọn tổ chức{" "}
+        Chọn tổ chức{' '}
         <select
           value={workspaceId}
           onChange={(e) => setWorkspaceId(e.target.value)}
@@ -135,12 +126,12 @@ export default function DirectoryPage() {
         </select>
       </label>
       {error && (
-        <p role="alert" style={{ color: "#b91c1c" }}>
+        <p role="alert" style={{ color: '#b91c1c' }}>
           {error}
         </p>
       )}
       {notice && (
-        <p role="status" style={{ color: "#047857" }}>
+        <p role="status" style={{ color: '#047857' }}>
           {notice}
         </p>
       )}
@@ -148,15 +139,14 @@ export default function DirectoryPage() {
         style={{
           padding: 20,
           marginTop: 20,
-          border: "1px solid #dbe4eb",
+          border: '1px solid #dbe4eb',
           borderRadius: 12,
-          background: "#fff",
+          background: '#fff',
         }}
       >
         <h2>Tự xác nhận tên hiển thị</h2>
-        <p style={{ color: "#64748b" }}>
-          Thao tác này chỉ cập nhật hồ sơ của chính tài khoản đang đăng nhập,
-          không cấp quyền mới.
+        <p style={{ color: '#64748b' }}>
+          Thao tác này chỉ cập nhật hồ sơ của chính tài khoản đang đăng nhập, không cấp quyền mới.
         </p>
         <input
           aria-label="Tên hiển thị của tôi"
@@ -165,14 +155,14 @@ export default function DirectoryPage() {
           onChange={(e) => setName(e.target.value)}
           placeholder="Nhập tên hiển thị"
           style={{ padding: 10, minWidth: 250 }}
-        />{" "}
+        />{' '}
         <button
           disabled={busy || !workspaceId || !name.trim()}
-          onClick={() => void submit("claim")}
+          onClick={() => void submit('claim')}
           style={{
             padding: 11,
-            background: "#078675",
-            color: "#fff",
+            background: '#078675',
+            color: '#fff',
             border: 0,
             borderRadius: 6,
           }}
@@ -184,18 +174,18 @@ export default function DirectoryPage() {
         style={{
           padding: 20,
           marginTop: 20,
-          border: "1px solid #dbe4eb",
+          border: '1px solid #dbe4eb',
           borderRadius: 12,
-          background: "#fff",
+          background: '#fff',
         }}
       >
         <h2>Thành viên đang hoạt động ({people.length})</h2>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: 'auto' }}>
           <table
             style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              textAlign: "left",
+              width: '100%',
+              borderCollapse: 'collapse',
+              textAlign: 'left',
             }}
           >
             <thead>
@@ -209,18 +199,16 @@ export default function DirectoryPage() {
             </thead>
             <tbody>
               {people.map((p) => (
-                <tr key={p.userId} style={{ borderTop: "1px solid #e2e8f0" }}>
+                <tr key={p.userId} style={{ borderTop: '1px solid #e2e8f0' }}>
                   <td style={{ padding: 10 }}>{p.userId}</td>
-                  <td style={{ padding: 10 }}>
-                    {p.displayName || "Chưa tự xác nhận"}
-                  </td>
+                  <td style={{ padding: 10 }}>{p.displayName || 'Chưa tự xác nhận'}</td>
                   <td style={{ padding: 10 }}>{p.role}</td>
                   <td style={{ padding: 10 }}>
-                    {workspace?.role === "admin" && p.accountClaimedAt ? (
+                    {workspace?.role === 'admin' && p.accountClaimedAt ? (
                       <>
                         <input
                           aria-label={`Phòng ban của ${p.userId}`}
-                          value={departments[p.userId] || ""}
+                          value={departments[p.userId] || ''}
                           maxLength={120}
                           onChange={(e) =>
                             setDepartments((d) => ({
@@ -229,20 +217,17 @@ export default function DirectoryPage() {
                             }))
                           }
                           style={{ padding: 7, maxWidth: 160 }}
-                        />{" "}
-                        <button
-                          disabled={busy}
-                          onClick={() => void submit("department", p.userId)}
-                        >
+                        />{' '}
+                        <button disabled={busy} onClick={() => void submit('department', p.userId)}>
                           Lưu
                         </button>
                       </>
                     ) : (
-                      p.departmentName || "—"
+                      p.departmentName || '—'
                     )}
                   </td>
                   <td style={{ padding: 10 }}>
-                    {p.accountClaimedAt ? "Đã tự xác nhận" : "Chưa xác nhận"}
+                    {p.accountClaimedAt ? 'Đã tự xác nhận' : 'Chưa xác nhận'}
                   </td>
                 </tr>
               ))}
