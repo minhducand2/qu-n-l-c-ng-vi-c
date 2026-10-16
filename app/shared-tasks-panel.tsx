@@ -126,6 +126,7 @@ export default function SharedTasksPanel(){
      </select>
     </label>
     <div style={{display:'flex',gap:8,alignItems:'center'}}>
+     <a href="/cong-viec-cua-toi" className="btn secondary" style={{textDecoration:"none"}}>Công việc của tôi</a>
      <button className="btn secondary" disabled={!workspaceId} onClick={()=>{setError('');void refreshTasks(workspaceId).catch(e=>setError(e instanceof Error?e.message:'Lỗi tải dữ liệu'))}}><RefreshCw size={16}/>Làm mới</button>
      {canCreate&&<button className="btn primary" onClick={create}><Plus size={16}/>Tạo công việc chung</button>}
     </div>
