@@ -1,6 +1,5 @@
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { initial } from "../../../lib/initial";
 import { validateTask } from "../../../lib/domain";
 const response = (x: any, status = 200) =>
   Response.json(x, { status, headers: { "Cache-Control": "no-store" } });
@@ -18,33 +17,6 @@ export async function GET() {
   const u = await getChatGPTUser();
   if (!u) return response({ error: "Vui lòng đăng nhập." }, 401);
   try {
-    const exists = await db()
-      .prepare("SELECT key FROM records WHERE key=?")
-      .bind(u.userId + ":initialized")
-      .first();
-    if (!exists) {
-      const now = new Date().toISOString();
-      await db().batch([
-        ...initial().map((x: any) =>
-          db()
-            .prepare(
-              "INSERT OR IGNORE INTO records (key,owner,kind,data,version,updated) VALUES (?,?,?,?,1,?)",
-            )
-            .bind(
-              u.userId + ":" + x.id,
-              u.userId,
-              x.kind,
-              JSON.stringify(x),
-              now,
-            ),
-        ),
-        db()
-          .prepare(
-            "INSERT OR IGNORE INTO records (key,owner,kind,data,version,updated) VALUES (?,?,?,?,1,?)",
-          )
-          .bind(u.userId + ":initialized", u.userId, "internal", "{}", now),
-      ]);
-    }
     const rows = await db()
       .prepare(
         "SELECT data,version,updated FROM records WHERE owner=? AND kind!='internal' ORDER BY updated DESC LIMIT 10000",
