@@ -155,6 +155,7 @@ export default function OrganizationCommandCenter({
   const [serverNotice, setServerNotice] = useState('');
 
   // TEAM360_APPROVAL_UI_V51F
+  // TEAM360_APPROVAL_POLISH_V51I
   type ApprovalState = {
     draft_id: string;
     status: 'submitted' | 'approved' | 'rejected';
@@ -1078,7 +1079,8 @@ export default function OrganizationCommandCenter({
                 {workflow?.reviewer_id && (
                   <p className="muted" style={{ margin: 0, fontSize: 12 }}>
                     {'Ng\u01b0\u1eddi duy\u1ec7t: '}
-                    {byId.get(workflow.reviewer_id)?.displayName || workflow.reviewer_id}
+                    {(byId.get(workflow.reviewer_id)?.displayName?.trim() ||
+                      workflow.reviewer_id) + ' (' + workflow.reviewer_id + ')'}
                   </p>
                 )}
                 {workflow?.decision_reason && (
@@ -1096,7 +1098,8 @@ export default function OrganizationCommandCenter({
                         <option value="">{'-- Ch\u1ecdn --'}</option>
                         {members.map(member => (
                           <option key={member.userId} value={member.userId}>
-                            {member.displayName || member.userId}
+                            {(member.displayName?.trim() || member.userId) +
+                              ' (' + member.userId + ')'}
                           </option>
                         ))}
                       </select>
@@ -1144,7 +1147,8 @@ export default function OrganizationCommandCenter({
                   {(activeApproval?.events || []).map(event => (
                     <p key={event.id} style={{ fontSize: 12, margin: '7px 0' }}>
                       {'#' + event.workflow_version + ' | ' + event.action +
-                        ' | ' + event.actor_id + ' | ' + event.created_at}
+                        ' | ' + (byId.get(event.actor_id)?.displayName ||
+                          event.actor_id) + ' | ' + event.created_at}
                       {event.reason && ' | ' + event.reason}
                     </p>
                   ))}

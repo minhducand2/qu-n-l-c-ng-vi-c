@@ -147,9 +147,10 @@ const integerVersion = (value: unknown): value is number =>
 // TEAM360_DIRECTIVE_APPROVALS_V51C
 // TEAM360_APPROVAL_ATOMIC_V51D
 // TEAM360_APPROVAL_READ_GUARD_V51F
+// TEAM360_APPROVAL_GUARD_V51I
 export async function GET(req: Request) {
   const user = await getChatGPTUser();
-  if (!user) return reply({ error: 'Vui l?ng ??ng nh?p.' }, 401);
+  if (!user) return reply({ error: 'Vui l\u00f2ng \u0111\u0103ng nh\u1eadp.' }, 401);
 
   const params = new URL(req.url).searchParams;
   const workspaceId = params.get('workspaceId');
@@ -158,7 +159,7 @@ export async function GET(req: Request) {
 
   if (!validId(workspaceId) ||
     !validId(taskId) || !validId(draftId)) {
-    return reply({ error: 'ID kh?ng h?p l?.' }, 400);
+    return reply({ error: 'ID kh\u00f4ng h\u1ee3p l\u1ec7.' }, 400);
   }
 
   try {
@@ -167,12 +168,12 @@ export async function GET(req: Request) {
       db, workspaceId, taskId, draftId, user.userId,
     );
 
-    if (!ctx) return reply({ error: 'Kh?ng c? quy?n.' }, 403);
+    if (!ctx) return reply({ error: 'Kh\u00f4ng c\u00f3 quy\u1ec1n.' }, 403);
 
     // Draft creator and workspace leaders may inspect the workflow.
     if (!leaders.has(ctx.member.role) &&
       ctx.draft.created_by !== user.userId) {
-      return reply({ error: 'Kh?ng c? quy?n xem quy tr?nh.' }, 403);
+      return reply({ error: 'Kh\u00f4ng c\u00f3 quy\u1ec1n xem quy tr\u00ecnh.' }, 403);
     }
 
     const events = await db.prepare(
@@ -196,16 +197,16 @@ export async function GET(req: Request) {
       },
     });
   } catch {
-    return reply({ error: 'Kh?ng t?i ???c quy tr?nh.' }, 500);
+    return reply({ error: 'Kh\u00f4ng t\u1ea3i \u0111\u01b0\u1ee3c quy tr\u00ecnh.' }, 500);
   }
 }
 
 export async function POST(req: Request) {
   const user = await getChatGPTUser();
-  if (!user) return reply({ error: 'Vui l?ng ??ng nh?p.' }, 401);
+  if (!user) return reply({ error: 'Vui l\u00f2ng \u0111\u0103ng nh\u1eadp.' }, 401);
 
   if (!validWriteOrigin(req)) {
-    return reply({ error: 'Ngu?n y?u c?u kh?ng h?p l?.' }, 403);
+    return reply({ error: 'Ngu\u1ed3n y\u00eau c\u1ea7u kh\u00f4ng h\u1ee3p l\u1ec7.' }, 403);
   }
 
   const body = await parseBody(req);
@@ -218,7 +219,7 @@ export async function POST(req: Request) {
       String(body.action)
     ) ||
     !integerVersion(body.draftVersion)) {
-    return reply({ error: 'Y?u c?u kh?ng h?p l?.' }, 400);
+    return reply({ error: 'Y\u00eau c\u1ea7u kh\u00f4ng h\u1ee3p l\u1ec7.' }, 400);
   }
 
   const workspaceId = body.workspaceId as string;
@@ -233,22 +234,22 @@ export async function POST(req: Request) {
 
   if ((action === 'submit' || action === 'resubmit') &&
     !validId(reviewerId)) {
-    return reply({ error: 'Ng??i duy?t kh?ng h?p l?.' }, 400);
+    return reply({ error: 'Ng\u01b0\u1eddi duy\u1ec7t kh\u00f4ng h\u1ee3p l\u1ec7.' }, 400);
   }
 
   if (action !== 'submit' &&
     !integerVersion(workflowVersion)) {
-    return reply({ error: 'Phi?n b?n quy tr?nh kh?ng h?p l?.' }, 400);
+    return reply({ error: 'Phi\u00ean b\u1ea3n quy tr\u00ecnh kh\u00f4ng h\u1ee3p l\u1ec7.' }, 400);
   }
 
   if (reason !== undefined &&
     (typeof reason !== 'string' || reason.length > 2000)) {
-    return reply({ error: 'L? do kh?ng h?p l?.' }, 400);
+    return reply({ error: 'L\u00fd do kh\u00f4ng h\u1ee3p l\u1ec7.' }, 400);
   }
 
   if (action === 'reject' &&
     (typeof reason !== 'string' || !reason.trim())) {
-    return reply({ error: 'T? ch?i ph?i c? l? do.' }, 400);
+    return reply({ error: 'T\u1eeb ch\u1ed1i ph\u1ea3i c\u00f3 l\u00fd do.' }, 400);
   }
 
   try {
@@ -257,13 +258,13 @@ export async function POST(req: Request) {
       db, workspaceId, taskId, draftId, user.userId,
     );
 
-    if (!ctx) return reply({ error: 'Kh?ng c? quy?n.' }, 403);
+    if (!ctx) return reply({ error: 'Kh\u00f4ng c\u00f3 quy\u1ec1n.' }, 403);
 
     const { member, task, draft, approval } = ctx;
 
     if (draft.version !== draftVersion) {
       return reply({
-        error: 'N?i dung d? th?o ?? thay ??i. H?y t?i l?i.',
+        error: 'N\u1ed9i dung d\u1ef1 th\u1ea3o \u0111\u00e3 thay \u0111\u1ed5i. H\u00e3y t\u1ea3i l\u1ea1i.',
       }, 409);
     }
 
@@ -273,7 +274,7 @@ export async function POST(req: Request) {
       if (!canEdit(member.role, user.userId, task) ||
         (!leaders.has(member.role) &&
           draft.created_by !== user.userId)) {
-        return reply({ error: 'Kh?ng c? quy?n tr?nh duy?t.' }, 403);
+        return reply({ error: 'Kh\u00f4ng c\u00f3 quy\u1ec1n tr\u00ecnh duy\u1ec7t.' }, 403);
       }
 
       const reviewer = await activeMember(
@@ -284,22 +285,22 @@ export async function POST(req: Request) {
         reviewerId === draft.created_by ||
         reviewerId === user.userId) {
         return reply({
-          error: 'Ng??i duy?t ph?i l? l?nh ??o h?p l? v? ??c l?p.',
+          error: 'Ng\u01b0\u1eddi duy\u1ec7t ph\u1ea3i l\u00e0 l\u00e3nh \u0111\u1ea1o h\u1ee3p l\u1ec7 v\u00e0 \u0111\u1ed9c l\u1eadp.',
         }, 400);
       }
     } else {
       if (!approval || approval.status !== 'submitted') {
-        return reply({ error: 'D? th?o kh?ng ? tr?ng th?i ch? duy?t.' }, 409);
+        return reply({ error: 'D\u1ef1 th\u1ea3o kh\u00f4ng \u1edf tr\u1ea1ng th\u00e1i ch\u1edd duy\u1ec7t.' }, 409);
       }
 
       if (!leaders.has(member.role) ||
         approval.reviewer_id !== user.userId ||
         draft.created_by === user.userId) {
-        return reply({ error: 'Kh?ng c? quy?n quy?t ??nh.' }, 403);
+        return reply({ error: 'Kh\u00f4ng c\u00f3 quy\u1ec1n quy\u1ebft \u0111\u1ecbnh.' }, 403);
       }
 
       if (approval.submitted_version !== draft.version) {
-        return reply({ error: 'Phi?n b?n tr?nh duy?t ?? thay ??i.' }, 409);
+        return reply({ error: 'Phi\u00ean b\u1ea3n tr\u00ecnh duy\u1ec7t \u0111\u00e3 thay \u0111\u1ed5i.' }, 409);
       }
     }
 
@@ -309,7 +310,7 @@ export async function POST(req: Request) {
 
     if (action === 'submit') {
       if (approval) {
-        return reply({ error: 'Quy tr?nh ?? t?n t?i.' }, 409);
+        return reply({ error: 'Quy tr\u00ecnh \u0111\u00e3 t\u1ed3n t\u1ea1i.' }, 409);
       }
 
       await db.batch([
@@ -344,17 +345,17 @@ export async function POST(req: Request) {
 
     } else {
       if (!approval || approval.workflow_version !== workflowVersion) {
-        return reply({ error: 'Quy tr?nh ?? thay ??i.' }, 409);
+        return reply({ error: 'Quy tr\u00ecnh \u0111\u00e3 thay \u0111\u1ed5i.' }, 409);
       }
 
       if (action === 'resubmit') {
         if (approval.status !== 'rejected') {
-          return reply({ error: 'Ch? tr?nh l?i b?n b? t? ch?i.' }, 409);
+          return reply({ error: 'Ch\u1ec9 tr\u00ecnh l\u1ea1i b\u1ea3n b\u1ecb t\u1eeb ch\u1ed1i.' }, 409);
         }
 
         if (draft.version <= approval.submitted_version) {
           return reply({
-            error: 'H?y ch?nh s?a v? l?u phi?n b?n m?i tr??c khi tr?nh l?i.',
+            error: 'H\u00e3y ch\u1ec9nh s\u1eeda v\u00e0 l\u01b0u phi\u00ean b\u1ea3n m\u1edbi tr\u01b0\u1edbc khi tr\u00ecnh l\u1ea1i.',
           }, 409);
         }
       }
@@ -385,6 +386,11 @@ export async function POST(req: Request) {
           "updated_at=? " +
           "WHERE draft_id=? AND workflow_version=? AND status=? " +
           "AND submitted_version=? " +
+          "AND (?='resubmit' OR EXISTS (" +
+          "SELECT 1 FROM memberships m WHERE m.workspace_id=? " +
+          "AND m.user_id=directive_approvals.reviewer_id " +
+          "AND m.status='active' AND m.role IN ('admin','leader')" +
+          ")) " +
           "AND EXISTS (SELECT 1 FROM directive_drafts " +
           "WHERE id=? AND version=? AND status='draft')"
         ).bind(
@@ -402,6 +408,8 @@ export async function POST(req: Request) {
           approval.workflow_version,
           action === 'resubmit' ? 'rejected' : 'submitted',
           approval.submitted_version,
+          action,
+          workspaceId,
           draftId,
           draftVersion,
         ),
@@ -433,7 +441,7 @@ export async function POST(req: Request) {
       if (results[0]?.meta?.changes !== 1 ||
         results[1]?.meta?.changes !== 1) {
         return reply({
-          error: 'Quy tr?nh c? th? ?? thay ??i. H?y t?i l?i tr??c khi thao t?c.',
+          error: 'Quy tr\u00ecnh c\u00f3 th\u1ec3 \u0111\u00e3 thay \u0111\u1ed5i. H\u00e3y t\u1ea3i l\u1ea1i tr\u01b0\u1edbc khi thao t\u00e1c.',
         }, 409);
       }
     }
@@ -443,17 +451,17 @@ export async function POST(req: Request) {
     ).bind(draftId).first<Approval>();
 
     if (!saved) {
-      return reply({ error: 'Kh?ng x?c minh ???c k?t qu?.' }, 500);
+      return reply({ error: 'Kh\u00f4ng x\u00e1c minh \u0111\u01b0\u1ee3c k\u1ebft qu\u1ea3.' }, 500);
     }
 
     return reply({
       approval: saved,
-      message: '?? ghi nh?n thao t?c quy tr?nh.',
+      message: '\u0110\u00e3 ghi nh\u1eadn thao t\u00e1c quy tr\u00ecnh.',
     });
 
   } catch {
     return reply({
-      error: 'Kh?ng th?c hi?n ???c thao t?c. H?y t?i l?i tr?ng th?i.',
+      error: 'Kh\u00f4ng th\u1ef1c hi\u1ec7n \u0111\u01b0\u1ee3c thao t\u00e1c. H\u00e3y t\u1ea3i l\u1ea1i tr\u1ea1ng th\u00e1i.',
     }, 500);
   }
 }
