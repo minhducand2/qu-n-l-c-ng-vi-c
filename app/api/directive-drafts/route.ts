@@ -350,13 +350,20 @@ export async function PATCH(req: Request) {
       ),
     ]);
 
-    if (
-      results[0]?.meta?.changes !== 1 ||
-      results[1]?.meta?.changes !== 1
-    ) {
+    const updatedCount = results[0]?.meta?.changes ?? 0;
+    const historyCount = results[1]?.meta?.changes ?? 0;
+
+    if (updatedCount === 0 && historyCount === 0) {
       return reply({
-        error: 'Xung ??t phi?n b?n. H?y t?i l?i d? th?o.',
+        error: 'D? th?o ?? thay ??i. H?y t?i l?i phi?n b?n m?i nh?t.',
+        conflict: true,
       }, 409);
+    }
+
+    if (updatedCount !== 1 || historyCount !== 1) {
+      return reply({
+        error: 'K?t qu? ghi d? li?u kh?ng nh?t qu?n. Vui l?ng t?i l?i d? th?o v? ki?m tra l?ch s? tr??c khi th? ti?p.',
+      }, 500);
     }
 
     return reply({
