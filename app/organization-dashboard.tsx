@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import OrganizationCommandCenter from './organization-command-center';
 import OrganizationReport from './organization-report';
 import OrganizationAlertCenter from './organization-alert-center';
 import OrganizationAnalytics from './organization-analytics';
@@ -280,6 +281,11 @@ export default function OrganizationDashboard() {
             </div>
           </div>
 
+          <OrganizationCommandCenter
+            key={selected}
+            workspaceId={selected}
+            tasks={tasks}
+          />
           <OrganizationAlertCenter
             key={selected}
             workspaceId={selected}
