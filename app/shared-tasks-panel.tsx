@@ -483,11 +483,11 @@ export default function SharedTasksPanel() {
                           }}
                         >
                           {{
-                            overdue: 'Qu? h?n',
-                            soon: 'S?p h?n',
-                            pending: 'Ch? duy?t',
-                            'missing-owner': 'Thi?u ng??i nh?n',
-                            'missing-due': 'Thi?u h?n',
+                            'overdue': 'Quá hạn',
+                            'soon': 'Sắp hạn',
+                            'pending': 'Chờ duyệt',
+                            'missing-owner': 'Thiếu người nhận',
+                            'missing-due': 'Thiếu hạn',
                           }[alert]}
                         </span>
                       ))}
