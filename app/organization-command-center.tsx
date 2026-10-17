@@ -125,6 +125,37 @@ export default function OrganizationCommandCenter({
     useState<'update' | 'resolve' | 'coordinate'>('update');
   const [notice, setNotice] = useState('');
 
+  // TEAM360_D1_DRAFT_V50
+  type ServerDraft = {
+    id: string;
+    workspace_id: string;
+    task_id: string;
+    title: string;
+    body: string;
+    version: number;
+    status: string;
+    updated_at: string;
+  };
+
+  type ServerVersion = {
+    version: number;
+    title: string;
+    body: string;
+    edited_by: string;
+    edited_at: string;
+  };
+
+  const [serverDrafts, setServerDrafts] =
+    useState<Record<string, ServerDraft>>({});
+
+  const [serverVersions, setServerVersions] =
+    useState<Record<string, ServerVersion[]>>({});
+
+  const [serverBusy, setServerBusy] = useState(false);
+  const [serverNotice, setServerNotice] = useState('');
+
+
+
   // TEAM360_DRAFT_V49
   // Local component state only: no server writes and no cross-session storage.
   type DraftVersion = {
@@ -320,6 +351,195 @@ export default function OrganizationCommandCenter({
 
     window.setTimeout(() => URL.revokeObjectURL(url), 10000);
     setNotice('\u0110\u00e3 t\u1ea1o t\u1ec7p d\u1ef1 th\u1ea3o TXT.');
+  }
+
+
+  function draftApiUrl(taskId: string, draftId?: string) {
+    const params = new URLSearchParams({
+      workspaceId,
+      taskId,
+    });
+
+    if (draftId) params.set('draftId', draftId);
+
+    return '/api/directive-drafts?' + params.toString();
+  }
+
+  async function draftRequest<T>(
+    url: string,
+    method: 'GET' | 'POST' | 'PATCH' = 'GET',
+    payload?: Record<string, unknown>,
+  ): Promise<T> {
+    const response = await fetch(url, {
+      method,
+      credentials: 'same-origin',
+      cache: 'no-store',
+      ...(method === 'GET' ? {} : {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    });
+
+    const data: unknown = await response.json();
+
+    if (!response.ok) {
+      const error = data && typeof data === 'object' &&
+        'error' in data
+        ? String((data as { error: unknown }).error)
+        : 'HTTP ' + response.status;
+
+      throw Error(error);
+    }
+
+    return data as T;
+  }
+
+  async function loadServerDraft() {
+    if (!selected || serverBusy) return;
+
+    const key = draftKey;
+    const taskId = selected.task.id;
+
+    setServerBusy(true);
+    setServerNotice('');
+
+    try {
+      const list = await draftRequest<{ drafts: ServerDraft[] }>(
+        draftApiUrl(taskId),
+      );
+
+      const drafts = Array.isArray(list.drafts) ? list.drafts : [];
+      const current = serverDrafts[key];
+      const latest = drafts.find(item => item.id === current?.id) ||
+        drafts[0];
+
+      if (!latest) {
+        setServerNotice(
+          'Ch\u01b0a c\u00f3 d\u1ef1 th\u1ea3o tr\u00ean D1 cho c\u00f4ng vi\u1ec7c n\u00e0y.'
+        );
+        return;
+      }
+
+      const details = await draftRequest<{
+        draft: ServerDraft;
+        versions: ServerVersion[];
+      }>(draftApiUrl(taskId, latest.id));
+
+      if (!window.confirm(
+        'T\u1ea3i n\u1ed9i dung t\u1eeb D1? N\u1ed9i dung \u0111ang ch\u1ec9nh s\u1eeda tr\u00ean giao di\u1ec7n s\u1ebd b\u1ecb thay th\u1ebf.'
+      )) {
+        return;
+      }
+
+      setEditedDrafts(items => ({
+        ...items,
+        [key]: details.draft.body,
+      }));
+      setServerDrafts(items => ({
+        ...items,
+        [key]: details.draft,
+      }));
+      setServerVersions(items => ({
+        ...items,
+        [key]: details.versions || [],
+      }));
+
+      setServerNotice(
+        '\u0110\u00e3 t\u1ea3i d\u1ef1 th\u1ea3o D1 - phi\u00ean b\u1ea3n ' +
+        details.draft.version + '.'
+      );
+    } catch (error) {
+      setServerNotice(
+        'L\u1ed7i t\u1ea3i D1: ' +
+        (error instanceof Error ? error.message : String(error))
+      );
+    } finally {
+      setServerBusy(false);
+    }
+  }
+
+  async function saveServerDraft() {
+    if (!selected || !draft.trim() || serverBusy) return;
+
+    const key = draftKey;
+    const taskId = selected.task.id;
+    const existing = serverDrafts[key];
+
+    setServerBusy(true);
+    setServerNotice('');
+
+    try {
+      // Read existing drafts first: never silently create a duplicate
+      // when this browser does not know the server-side draft.
+      const list = await draftRequest<{ drafts: ServerDraft[] }>(
+        draftApiUrl(taskId),
+      );
+
+      const remote = (list.drafts || []).find(
+        item => item.id === existing?.id
+      );
+
+      if (!existing && list.drafts?.length) {
+        setServerNotice(
+          '\u0110\u00e3 c\u00f3 d\u1ef1 th\u1ea3o tr\u00ean D1. H\u00e3y nh\u1ea5n "T\u1ea3i t\u1eeb D1" tr\u01b0\u1edbc khi c\u1eadp nh\u1eadt.'
+        );
+        return;
+      }
+
+      if (existing && (!remote || remote.version !== existing.version)) {
+        setServerNotice(
+          'Phi\u00ean b\u1ea3n D1 \u0111\u00e3 thay \u0111\u1ed5i. H\u00e3y t\u1ea3i l\u1ea1i tr\u01b0\u1edbc khi l\u01b0u.'
+        );
+        return;
+      }
+
+      const payload: Record<string, unknown> = {
+        workspaceId,
+        taskId,
+        title: selected.task.title?.trim() || selected.task.id,
+        body: draft,
+      };
+
+      if (existing) {
+        payload.draftId = existing.id;
+        payload.version = existing.version;
+      }
+
+      const saved = await draftRequest<{
+        id: string;
+        version: number;
+      }>(
+        '/api/directive-drafts',
+        existing ? 'PATCH' : 'POST',
+        payload,
+      );
+
+      const details = await draftRequest<{
+        draft: ServerDraft;
+        versions: ServerVersion[];
+      }>(draftApiUrl(taskId, saved.id));
+
+      setServerDrafts(items => ({
+        ...items,
+        [key]: details.draft,
+      }));
+      setServerVersions(items => ({
+        ...items,
+        [key]: details.versions || [],
+      }));
+
+      setServerNotice(
+        '\u0110\u00e3 l\u01b0u l\u00ean D1 - phi\u00ean b\u1ea3n ' +
+        saved.version + '.'
+      );
+    } catch (error) {
+      setServerNotice(
+        'L\u01b0u D1 th\u1ea5t b\u1ea1i: ' +
+        (error instanceof Error ? error.message : String(error))
+      );
+    } finally {
+      setServerBusy(false);
+    }
   }
 
   async function copyDraft() {
@@ -528,6 +748,120 @@ export default function OrganizationCommandCenter({
               </option>
             </select>
           </label>
+
+
+          <div style={{
+            border: '1px solid #99f6e4',
+            borderRadius: 12,
+            padding: 14,
+            display: 'grid',
+            gap: 10,
+          }}>
+            <strong>
+              {'L\u01b0u tr\u1eef d\u1ef1 th\u1ea3o tr\u00ean D1'}
+            </strong>
+
+            <p className="muted" style={{
+              fontSize: 12,
+              margin: 0,
+            }}>
+              {'L\u01b0u th\u1eadt l\u00ean database local/remote theo m\u00f4i tr\u01b0\u1eddng \u0111ang ch\u1ea1y. Kh\u00f4ng ph\u1ea3i ban h\u00e0nh ch\u1ec9 \u0111\u1ea1o.'}
+            </p>
+
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+            }}>
+              <button
+                type="button"
+                className="btn primary"
+                disabled={serverBusy || !draft.trim()}
+                onClick={() => void saveServerDraft()}
+              >
+                {serverBusy
+                  ? '\u0110ang x\u1eed l\u00fd...'
+                  : 'L\u01b0u l\u00ean D1'}
+              </button>
+
+              <button
+                type="button"
+                className="btn secondary compact"
+                disabled={serverBusy}
+                onClick={() => void loadServerDraft()}
+              >
+                {'T\u1ea3i t\u1eeb D1'}
+              </button>
+            </div>
+
+            {serverDrafts[draftKey] && (
+              <p className="muted" style={{
+                fontSize: 12,
+                margin: 0,
+              }}>
+                {'Phi\u00ean b\u1ea3n D1: '}
+                {serverDrafts[draftKey].version}
+                {' \u00b7 C\u1eadp nh\u1eadt: '}
+                {serverDrafts[draftKey].updated_at}
+              </p>
+            )}
+
+            {serverVersions[draftKey]?.length > 0 && (
+              <details>
+                <summary style={{ cursor: 'pointer' }}>
+                  {'L\u1ecbch s\u1eed tr\u00ean D1 ('}
+                  {serverVersions[draftKey].length}
+                  {')'}
+                </summary>
+                <div style={{
+                  display: 'grid',
+                  gap: 8,
+                  marginTop: 10,
+                }}>
+                  {serverVersions[draftKey].map(version => (
+                    <div key={version.version} style={{
+                      padding: 9,
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 8,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}>
+                      <span>
+                        {'Phi\u00ean b\u1ea3n '}{version.version}
+                        {' \u00b7 '}{version.edited_at}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn secondary compact"
+                        onClick={() => {
+                          setEditedDrafts(items => ({
+                            ...items,
+                            [draftKey]: version.body,
+                          }));
+                          setServerNotice(
+                            '\u0110\u00e3 n\u1ea1p n\u1ed9i dung b\u1ea3n ' +
+                            version.version +
+                            '. Nh\u1ea5n L\u01b0u l\u00ean D1 \u0111\u1ec3 t\u1ea1o phi\u00ean b\u1ea3n m\u1edbi.'
+                          );
+                        }}
+                      >
+                        {'N\u1ea1p n\u1ed9i dung'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+
+            {serverNotice && (
+              <p role="status" aria-live="polite"
+                style={{ fontSize: 12, margin: 0 }}>
+                {serverNotice}
+              </p>
+            )}
+          </div>
 
           <textarea
             rows={15}
