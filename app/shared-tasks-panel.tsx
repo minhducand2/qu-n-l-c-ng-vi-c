@@ -67,6 +67,7 @@ export default function SharedTasksPanel() {
   const [message, setMessage] = useState('');
   const [taskSearch, setTaskSearch] = useState('');
   const [taskStatus, setTaskStatus] = useState('');
+  const [alertFilter, setAlertFilter] = useState('');
   const [deepLink, setDeepLink] = useState<{ workspaceId: string; taskId: string } | null>(null);
   const [loadedWorkspace, setLoadedWorkspace] = useState('');
   const selected = organizations.find((x) => x.id === workspaceId);
@@ -105,7 +106,13 @@ export default function SharedTasksPanel() {
           .join(' ')
           .toLocaleLowerCase('vi-VN')
           .includes(taskSearch.toLocaleLowerCase('vi-VN'))) &&
-      (!taskStatus || t.status === taskStatus),
+      (!taskStatus || t.status === taskStatus) &&
+      (!alertFilter ||
+        (alertFilter === 'completed'
+          ? assessSharedTask(t, localDay()) === 'completed'
+          : getSharedTaskAlerts(t, localDay()).some(
+              (alert) => alert === alertFilter
+            ))),
   );
   const memberLabel = (id: string | null) => {
     if (!id) return 'Chưa giao';
@@ -385,15 +392,22 @@ export default function SharedTasksPanel() {
               ['Thiếu hạn', 'missing-due'],
               ['Hoàn thành', 'completed'],
             ].map(([label, key]) => (
-              <div
+              <button
+                  type="button"
                   key={key}
+                  aria-pressed={alertFilter === key}
+                  onClick={() =>
+                    setAlertFilter((current) => current === key ? '' : key)
+                  }
                   style={{
+                    cursor: 'pointer',
+                    textAlign: 'left',
                     minWidth: 0,
                     minHeight: 88,
                     padding: '15px 17px',
                     border: '1px solid #e2e8f0',
                     borderRadius: 12,
-                    background: '#ffffff',
+                    background: alertFilter === key ? '#ecfdf5' : '#ffffff',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -406,7 +420,7 @@ export default function SharedTasksPanel() {
                   <strong style={{ fontSize: 26, lineHeight: 1.1, fontWeight: 700 }}>
                     {counts[key] || 0}
                   </strong>
-                </div>
+                </button>
             ))}
           </div>
         </section>
