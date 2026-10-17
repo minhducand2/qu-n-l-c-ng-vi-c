@@ -1,4 +1,5 @@
 import { unzipSync } from "fflate";
+import { SaxesParser } from "saxes";
 
 export type AllowedFileExtension =
   | "pdf" | "docx" | "xlsx" | "csv" | "txt"
@@ -181,6 +182,60 @@ function zipCrcTable(bytes: Uint8Array): Map<string, number> {
   return result;
 }
 
+const XML_NAMESPACES = {
+  contentTypes: "http://schemas.openxmlformats.org/package/2006/content-types",
+  relationships: "http://schemas.openxmlformats.org/package/2006/relationships",
+  word: "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+  spreadsheet: "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+};
+
+function validRequiredXml(
+  name: string,
+  bytes: Uint8Array,
+  extension: "docx" | "xlsx",
+): boolean {
+  const expected =
+    name === "[Content_Types].xml"
+      ? { local: "Types", uri: XML_NAMESPACES.contentTypes }
+      : name === "_rels/.rels"
+        ? { local: "Relationships", uri: XML_NAMESPACES.relationships }
+        : extension === "docx"
+          ? { local: "document", uri: XML_NAMESPACES.word }
+          : { local: "workbook", uri: XML_NAMESPACES.spreadsheet };
+
+  try {
+    const xml = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const parser = new SaxesParser({ xmlns: true });
+
+    let rootSeen = false;
+    let rootValid = false;
+    let invalid = false;
+
+    parser.on("doctype", () => {
+      invalid = true;
+      throw new Error("DOCTYPE is not allowed");
+    });
+
+    parser.on("error", () => {
+      invalid = true;
+    });
+
+    parser.on("opentag", (tag) => {
+      if (!rootSeen) {
+        rootSeen = true;
+        rootValid =
+          tag.local === expected.local &&
+          tag.uri === expected.uri;
+      }
+    });
+
+    parser.write(xml).close();
+    return rootSeen && rootValid && !invalid;
+  } catch {
+    return false;
+  }
+}
+
 function validZipDocument(
   bytes: Uint8Array,
   extension: "docx" | "xlsx",
@@ -243,6 +298,7 @@ function validZipDocument(
         content.length > 0 &&
         content.length <= MAX_REQUIRED_XML_BYTES &&
         crc32(content) === checksums.get(name)
+        && validRequiredXml(name, content, extension)
       );
     });
   } catch {
