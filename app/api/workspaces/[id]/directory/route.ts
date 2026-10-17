@@ -82,12 +82,12 @@ export async function POST(req: Request, ctx: Context) {
   if (!validWorkspaceId(id))
     return send({ error: "Tổ chức không hợp lệ." }, 400);
   try {
-    const body = await parseBody(req);
-    if (!body || !textField(body.displayName, 120))
-      return send({ error: "Tên hiển thị phải có từ 1 đến 120 ký tự." }, 400);
     const db = env.DB as D1Database;
     if (!(await activeMember(db, id, user.userId)))
       return send({ error: "Không có quyền truy cập." }, 403);
+    const body = await parseBody(req);
+    if (!body || !textField(body.displayName, 120))
+      return send({ error: "Tên hiển thị phải có từ 1 đến 120 ký tự." }, 400);
     const now = new Date().toISOString();
     // Preserve department assigned by admin. Never allow arbitrary userId in body.
     const result = await db
@@ -134,6 +134,10 @@ export async function PATCH(req: Request, ctx: Context) {
   if (!validWorkspaceId(id))
     return send({ error: "Tổ chức không hợp lệ." }, 400);
   try {
+    const db = env.DB as D1Database;
+    const actor = await activeMember(db, id, user.userId);
+    if (!actor || actor.role !== "admin")
+      return send({ error: "Chỉ admin được phân phòng ban." }, 403);
     const body = await parseBody(req);
     if (
       !body ||
@@ -144,10 +148,6 @@ export async function PATCH(req: Request, ctx: Context) {
       body.departmentName.trim().length > 120
     )
       return send({ error: "ID hoặc tên phòng ban không hợp lệ." }, 400);
-    const db = env.DB as D1Database;
-    const actor = await activeMember(db, id, user.userId);
-    if (!actor || actor.role !== "admin")
-      return send({ error: "Chỉ admin được phân phòng ban." }, 403);
     const now = new Date().toISOString();
     const result = await db
       .prepare(

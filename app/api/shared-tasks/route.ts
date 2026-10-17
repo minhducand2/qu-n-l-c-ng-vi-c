@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { validWriteOrigin } from "../../../lib/auth-api";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { validateTask } from "../../../lib/domain";
 import {
@@ -95,12 +96,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const u = await getChatGPTUser();
   if (!u) return reply({ error: "Vui lòng đăng nhập." }, 401);
-  const origin = req.headers.get("origin");
-  if (
-    (origin && origin !== new URL(req.url).origin) ||
-    req.headers.get("sec-fetch-site") === "cross-site"
-  )
-    return reply({ error: "Nguồn yêu cầu không hợp lệ." }, 403);
+  if (!validWriteOrigin(req))
+    return reply({ error: "Invalid request origin." }, 403);
   if (
     !req.headers
       .get("content-type")

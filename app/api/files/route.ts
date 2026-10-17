@@ -1,13 +1,11 @@
 import { env } from "cloudflare:workers";
+import { validWriteOrigin } from "../../../lib/auth-api";
 import { getChatGPTUser } from "../../chatgpt-auth";
 const db = () => env.DB as D1Database;
 export async function POST(req: Request) {
   const u = await getChatGPTUser();
   if (!u) return new Response("Unauthorized", { status: 401 });
-  if (
-    req.headers.get("origin") &&
-    new URL(req.headers.get("origin")!).host !== new URL(req.url).host
-  )
+  if (!validWriteOrigin(req))
     return new Response("Forbidden", { status: 403 });
   try {
     const form = await req.formData();
