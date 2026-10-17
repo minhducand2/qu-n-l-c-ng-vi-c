@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { statuses, priorities, overdue, dateText, localDay, validateTask } from '../lib/domain';
 import SharedTasksPanel from './shared-tasks-panel';
+import OrganizationDashboard from './organization-dashboard';
 type Row = Record<string, any>;
 const nav = [
   ['overview', 'Tổng quan', LayoutDashboard],
@@ -1084,6 +1085,7 @@ export default function Workspace({ userName }: { userName: string }) {
                       })}
                     </span>
                   </div>
+                  <OrganizationDashboard />
                   <div className="stats-grid">
                     {[
                       {
