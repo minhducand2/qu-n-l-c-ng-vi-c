@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import OrganizationAlertCenter from './organization-alert-center';
 import OrganizationAnalytics from './organization-analytics';
 
 type Space = {
@@ -278,6 +279,11 @@ export default function OrganizationDashboard() {
             </div>
           </div>
 
+          <OrganizationAlertCenter
+            key={selected}
+            workspaceId={selected}
+            tasks={tasks}
+          />
           <OrganizationAnalytics key={selected} workspaceId={selected} tasks={tasks} />
           <div style={{
             display: 'flex',
