@@ -236,6 +236,123 @@ function validRequiredXml(
   }
 }
 
+function validOoxmlRelationships(
+  files: Record<string, Uint8Array>,
+  extension: "docx" | "xlsx",
+): boolean {
+  const mainPart =
+    extension === "docx"
+      ? "word/document.xml"
+      : "xl/workbook.xml";
+
+  const mainContentType =
+    extension === "docx"
+      ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml";
+
+  const officeDocumentType =
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument";
+
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+
+  try {
+    let matchingRelationships = 0;
+    let matchingOverrides = 0;
+    let invalid = false;
+
+    const relParser = new SaxesParser({ xmlns: true });
+    let relDepth = 0;
+
+    relParser.on("doctype", () => {
+      throw new Error("DOCTYPE forbidden");
+    });
+
+    relParser.on("error", () => {
+      invalid = true;
+    });
+
+    relParser.on("opentag", (tag) => {
+      relDepth++;
+
+      if (
+        relDepth !== 2 ||
+        tag.local !== "Relationship" ||
+        tag.uri !== XML_NAMESPACES.relationships
+      ) return;
+
+      const type = tag.attributes["Type"]?.value;
+      if (type !== officeDocumentType) return;
+
+      matchingRelationships++;
+
+      const target = tag.attributes["Target"]?.value;
+      const mode = tag.attributes["TargetMode"]?.value;
+
+      if (
+        matchingRelationships !== 1 ||
+        (target !== mainPart && target !== "/" + mainPart) ||
+        (mode !== undefined && mode !== "Internal")
+      ) {
+        invalid = true;
+      }
+    });
+
+    relParser.on("closetag", () => {
+      relDepth--;
+    });
+
+    relParser.write(decoder.decode(files["_rels/.rels"])).close();
+
+    if (invalid || matchingRelationships !== 1) return false;
+
+    const ctParser = new SaxesParser({ xmlns: true });
+    let ctDepth = 0;
+
+    ctParser.on("doctype", () => {
+      throw new Error("DOCTYPE forbidden");
+    });
+
+    ctParser.on("error", () => {
+      invalid = true;
+    });
+
+    ctParser.on("opentag", (tag) => {
+      ctDepth++;
+
+      if (
+        ctDepth !== 2 ||
+        tag.local !== "Override" ||
+        tag.uri !== XML_NAMESPACES.contentTypes
+      ) return;
+
+      if (tag.attributes["PartName"]?.value !== "/" + mainPart) {
+        return;
+      }
+
+      matchingOverrides++;
+
+      if (
+        matchingOverrides !== 1 ||
+        tag.attributes["ContentType"]?.value !== mainContentType
+      ) {
+        invalid = true;
+      }
+    });
+
+    ctParser.on("closetag", () => {
+      ctDepth--;
+    });
+
+    ctParser.write(
+      decoder.decode(files["[Content_Types].xml"]),
+    ).close();
+
+    return !invalid && matchingOverrides === 1;
+  } catch {
+    return false;
+  }
+}
+
 function validZipDocument(
   bytes: Uint8Array,
   extension: "docx" | "xlsx",
@@ -300,7 +417,7 @@ function validZipDocument(
         crc32(content) === checksums.get(name)
         && validRequiredXml(name, content, extension)
       );
-    });
+    }) && validOoxmlRelationships(files, extension);
   } catch {
     return false;
   }
