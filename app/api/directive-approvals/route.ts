@@ -146,6 +146,7 @@ const integerVersion = (value: unknown): value is number =>
 
 // TEAM360_DIRECTIVE_APPROVALS_V51C
 // TEAM360_APPROVAL_ATOMIC_V51D
+// TEAM360_APPROVAL_READ_GUARD_V51F
 export async function GET(req: Request) {
   const user = await getChatGPTUser();
   if (!user) return reply({ error: 'Vui l?ng ??ng nh?p.' }, 401);
@@ -184,6 +185,15 @@ export async function GET(req: Request) {
     return reply({
       approval: ctx.approval,
       events: events.results || [],
+      permissions: {
+        canSubmit: canEdit(ctx.member.role, user.userId, ctx.task) &&
+          (leaders.has(ctx.member.role) ||
+            ctx.draft.created_by === user.userId),
+        canDecide: leaders.has(ctx.member.role) &&
+          ctx.approval?.status === 'submitted' &&
+          ctx.approval.reviewer_id === user.userId &&
+          ctx.draft.created_by !== user.userId,
+      },
     });
   } catch {
     return reply({ error: 'Kh?ng t?i ???c quy tr?nh.' }, 500);
