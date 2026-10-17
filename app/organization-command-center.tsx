@@ -154,6 +154,17 @@ export default function OrganizationCommandCenter({
   const [serverBusy, setServerBusy] = useState(false);
   const [serverNotice, setServerNotice] = useState('');
 
+  // TEAM360_D1_AUTOLOAD_V501
+  type AutoLoadStatus = {
+    key: string;
+    status: 'loading' | 'ready' | 'empty' | 'error';
+    message?: string;
+  };
+
+  const [autoLoad, setAutoLoad] =
+    useState<AutoLoadStatus | null>(null);
+
+
 
 
   // TEAM360_DRAFT_V49
@@ -394,6 +405,103 @@ export default function OrganizationCommandCenter({
     return data as T;
   }
 
+
+  // Automatically restore server data when a task is selected.
+  // Never replace text already edited in this browser session.
+  useEffect(() => {
+    if (!selectedId) return;
+
+    let active = true;
+    const taskId = selectedId;
+    const key = workspaceId + ':' + taskId;
+
+    setAutoLoad({ key, status: 'loading' });
+
+    const url = '/api/directive-drafts?' +
+      new URLSearchParams({
+        workspaceId,
+        taskId,
+      }).toString();
+
+    void (async () => {
+      try {
+        const list = await draftRequest<{
+          drafts: ServerDraft[];
+        }>(url);
+
+        if (!active) return;
+
+        const drafts = Array.isArray(list.drafts)
+          ? list.drafts
+          : [];
+
+        if (drafts.length === 0) {
+          setAutoLoad({ key, status: 'empty' });
+          return;
+        }
+
+        // Prefer the newest draft returned by the server.
+        const newest = drafts[0];
+
+        const detailUrl = url +
+          '&draftId=' + encodeURIComponent(newest.id);
+
+        const details = await draftRequest<{
+          draft: ServerDraft;
+          versions: ServerVersion[];
+        }>(detailUrl);
+
+        if (!active) return;
+
+        const remote = details.draft;
+
+        if (!remote || remote.task_id !== taskId ||
+          remote.workspace_id !== workspaceId) {
+          throw Error('D? li?u d? th?o kh?ng kh?p c?ng vi?c.');
+        }
+
+        setServerDrafts(current => ({
+          ...current,
+          [key]: remote,
+        }));
+
+        setServerVersions(current => ({
+          ...current,
+          [key]: Array.isArray(details.versions)
+            ? details.versions
+            : [],
+        }));
+
+        setEditedDrafts(current => {
+          // Important: an existing edit is never overwritten
+          // by an asynchronous server response.
+          if (current[key] !== undefined) return current;
+
+          return {
+            ...current,
+            [key]: remote.body,
+          };
+        });
+
+        setAutoLoad({ key, status: 'ready' });
+      } catch (error) {
+        if (!active) return;
+
+        setAutoLoad({
+          key,
+          status: 'error',
+          message: error instanceof Error
+            ? error.message
+            : String(error),
+        });
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [workspaceId, selectedId]);
+
   async function loadServerDraft() {
     if (!selected || serverBusy) return;
 
@@ -565,6 +673,37 @@ export default function OrganizationCommandCenter({
       setNotice('Kh\u00f4ng sao ch\u00e9p \u0111\u01b0\u1ee3c. Ki\u1ec3m tra quy\u1ec1n clipboard.');
     }
   }
+
+
+  const remoteDraft = serverDrafts[draftKey];
+  const currentAutoLoad =
+    autoLoad?.key === draftKey ? autoLoad : null;
+
+  const hasUnsavedChanges = Boolean(
+    selected &&
+    (
+      remoteDraft
+        ? draft !== remoteDraft.body
+        : editedDrafts[draftKey] !== undefined &&
+          draft !== generatedDraft
+    )
+  );
+
+  const saveStatusText = !selected
+    ? ''
+    : currentAutoLoad?.status === 'loading'
+      ? '\u0110ang ki\u1ec3m tra d\u1ef1 th\u1ea3o tr\u00ean D1...'
+      : currentAutoLoad?.status === 'error'
+        ? 'Kh\u00f4ng t\u1ef1 t\u1ea3i \u0111\u01b0\u1ee3c D1: ' +
+          (currentAutoLoad.message || 'L\u1ed7i kh\u00f4ng x\u00e1c \u0111\u1ecbnh')
+        : remoteDraft
+          ? hasUnsavedChanges
+            ? 'C\u00f3 thay \u0111\u1ed5i ch\u01b0a l\u01b0u l\u00ean D1'
+            : '\u0110\u00e3 \u0111\u1ed3ng b\u1ed9 v\u1edbi D1 - b\u1ea3n ' +
+              remoteDraft.version
+          : currentAutoLoad?.status === 'empty'
+            ? 'Ch\u01b0a c\u00f3 d\u1ef1 th\u1ea3o l\u01b0u tr\u00ean D1'
+            : 'Ch\u01b0a x\u00e1c \u0111\u1ecbnh tr\u1ea1ng th\u00e1i D1';
 
   const controlStyle: React.CSSProperties = {
     minWidth: 170,
@@ -868,6 +1007,31 @@ export default function OrganizationCommandCenter({
                 </div>
               </details>
             )}
+
+
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                padding: '9px 11px',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                background: hasUnsavedChanges
+                  ? '#fffbeb'
+                  : currentAutoLoad?.status === 'error'
+                    ? '#fef2f2'
+                    : '#f0fdfa',
+                color: hasUnsavedChanges
+                  ? '#92400e'
+                  : currentAutoLoad?.status === 'error'
+                    ? '#b91c1c'
+                    : '#115e59',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {saveStatusText}
+            </div>
 
             {serverNotice && (
               <p
