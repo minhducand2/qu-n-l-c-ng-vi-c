@@ -424,6 +424,62 @@ function validZipDocument(
   }
 }
 
+/**
+ * Lightweight upload screening.
+ *
+ * DOCX/XLSX ZIP structure is checked without decompression.
+ * This does not establish that Office document content is valid or safe.
+ */
+export function validateFileContentForUpload(
+  filename: string,
+  bytes: Uint8Array,
+): FileValidationResult {
+  const extension = filename.split(".").pop()?.toLowerCase();
+
+  if (!extension || !extensions.has(extension as AllowedFileExtension)) {
+    return { ok: false, reason: "Unsupported file extension" };
+  }
+
+  if (bytes.length === 0 || bytes.length > MAX_FILE_BYTES) {
+    return { ok: false, reason: "Invalid file size" };
+  }
+
+  if (extension === "docx" || extension === "xlsx") {
+    try {
+      if (!startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) {
+        return { ok: false, reason: "Invalid ZIP signature" };
+      }
+
+      const entries = zipCrcTable(bytes);
+      const mainPart =
+        extension === "docx"
+          ? "word/document.xml"
+          : "xl/workbook.xml";
+
+      for (const required of [
+        "[Content_Types].xml",
+        "_rels/.rels",
+        mainPart,
+      ]) {
+        const entry = entries.get(required);
+        if (
+          !entry ||
+          entry.size === 0 ||
+          entry.size > MAX_REQUIRED_XML_BYTES
+        ) {
+          return { ok: false, reason: "Invalid Office ZIP structure" };
+        }
+      }
+
+      return { ok: true, extension };
+    } catch {
+      return { ok: false, reason: "Invalid Office ZIP structure" };
+    }
+  }
+
+  return validateFileContent(filename, bytes);
+}
+
 export function validateFileContent(
   filename: string,
   bytes: Uint8Array,

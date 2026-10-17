@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { validWriteOrigin } from "../../../lib/auth-api";
+import { validateFileContentForUpload } from "../../../lib/file-validation";
 import { getChatGPTUser } from "../../chatgpt-auth";
 const db = () => env.DB as D1Database;
 export async function POST(req: Request) {
@@ -34,7 +35,17 @@ export async function POST(req: Request) {
     const id = crypto.randomUUID();
     const key = u.userId + "/" + id;
     const bucket = env.BUCKET as R2Bucket;
-    await bucket.put(key, await file.arrayBuffer());
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    const validation = validateFileContentForUpload(file.name, fileBytes);
+
+    if (!validation.ok) {
+      return Response.json(
+        { error: "Invalid file content", reason: validation.reason },
+        { status: 400 },
+      );
+    }
+
+    await bucket.put(key, fileBytes);
 
     const record = {
       id,
