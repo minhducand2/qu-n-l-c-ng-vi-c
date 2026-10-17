@@ -122,6 +122,47 @@ function zipCrcTable(bytes: Uint8Array): Map<string, number> {
 
     const name = decoder.decode(bytes.subarray(p + 46, p + 46 + nameLen));
 
+    // Cross-check the local header against the central directory.
+    const localFlags = u16(localOffset + 6);
+    const localMethod = u16(localOffset + 8);
+    const localNameLength = u16(localOffset + 26);
+    const localExtraLength = u16(localOffset + 28);
+
+    const localNameStart = localOffset + 30;
+    const localNameEnd = localNameStart + localNameLength;
+    const dataStart = localNameEnd + localExtraLength;
+    const dataEnd = dataStart + compressed;
+
+    if (
+      localNameEnd > dirOffset ||
+      dataStart > dirOffset ||
+      dataEnd > dirOffset ||
+      localFlags !== flags ||
+      localMethod !== method
+    ) {
+      throw new Error("Local header metadata mismatch");
+    }
+
+    const localName = decoder.decode(
+      bytes.subarray(localNameStart, localNameEnd),
+    );
+
+    if (localName !== name) {
+      throw new Error("Local header filename mismatch");
+    }
+
+    // With bit 3 set, CRC and sizes may be stored in a data
+    // descriptor rather than the local header.
+    if ((flags & 0x0008) === 0) {
+      if (
+        u32(localOffset + 14) !== crc ||
+        u32(localOffset + 18) !== compressed ||
+        u32(localOffset + 22) !== original
+      ) {
+        throw new Error("Local header CRC or size mismatch");
+      }
+    }
+
     if (result.has(name)) throw new Error("Duplicate ZIP entry");
 
     totalSize += original;
