@@ -44,7 +44,7 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function zipCrcTable(bytes: Uint8Array): Map<string, number> {
+function zipCrcTable(bytes: Uint8Array): Map<string, { crc: number; size: number }> {
   const view = new DataView(
     bytes.buffer, bytes.byteOffset, bytes.byteLength,
   );
@@ -87,7 +87,7 @@ function zipCrcTable(bytes: Uint8Array): Map<string, number> {
     throw new Error("Unsupported ZIP directory");
   }
 
-  const result = new Map<string, number>();
+  const result = new Map<string, { crc: number; size: number }>();
   const decoder = new TextDecoder("utf-8", { fatal: true });
   let p = dirOffset;
   let totalSize = 0;
@@ -171,7 +171,7 @@ function zipCrcTable(bytes: Uint8Array): Map<string, number> {
       throw new Error("ZIP size limit exceeded");
     }
 
-    result.set(name, crc);
+    result.set(name, { crc, size: original });
     p = next;
   }
 
@@ -414,7 +414,8 @@ function validZipDocument(
         content instanceof Uint8Array &&
         content.length > 0 &&
         content.length <= MAX_REQUIRED_XML_BYTES &&
-        crc32(content) === checksums.get(name)
+        crc32(content) === checksums.get(name)?.crc &&
+        content.length === checksums.get(name)?.size
         && validRequiredXml(name, content, extension)
       );
     }) && validOoxmlRelationships(files, extension);
