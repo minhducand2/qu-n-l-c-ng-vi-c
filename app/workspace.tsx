@@ -1109,6 +1109,22 @@ export default function Workspace({ userName }: { userName: string }) {
                           setOnlyLate(true);
                         },
                       },
+                      {
+                        label: 'Sắp hết hạn',
+                        value: soon.length,
+                        icon: Clock,
+                        color: 'orange',
+                        sub: 'Trong ngưỡng nhắc hạn',
+                        action: () => go('tasks'),
+                      },
+                      {
+                        label: 'Chờ phê duyệt',
+                        value: pending.length,
+                        icon: ShieldCheck,
+                        color: 'blue',
+                        sub: 'Cần xem xét kết quả',
+                        action: () => go('approvals'),
+                      },
                     ].map((s) => (
                       <button key={s.label} className="stat-card" onClick={s.action}>
                         <div>
@@ -1125,6 +1141,64 @@ export default function Workspace({ userName }: { userName: string }) {
                       </button>
                     ))}
                   </div>
+                  <section
+                    className="panel"
+                    style={{ padding: 22, marginBottom: 20 }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 16,
+                      flexWrap: 'wrap',
+                      marginBottom: 14,
+                    }}>
+                      <div>
+                        <h2 style={{ margin: 0, fontSize: 18 }}>
+                          Tỷ lệ hoàn thành
+                        </h2>
+                        <p className="muted" style={{ margin: '6px 0 0' }}>
+                          {done.length}/{tasks.length} công việc
+                          trong không gian của bạn
+                        </p>
+                      </div>
+                      <strong style={{
+                        fontSize: 30,
+                        color: '#0d9488',
+                      }}>
+                        {tasks.length
+                          ? Math.round(done.length / tasks.length * 100)
+                          : 0}%
+                      </strong>
+                    </div>
+                    <div
+                      role="progressbar"
+                      aria-label="Ty le hoan thanh cong viec"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={
+                        tasks.length
+                          ? Math.round(done.length / tasks.length * 100)
+                          : 0
+                      }
+                      style={{
+                        height: 12,
+                        borderRadius: 999,
+                        background: '#e2e8f0',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div style={{
+                        height: '100%',
+                        width: (tasks.length
+                          ? done.length / tasks.length * 100
+                          : 0) + '%',
+                        background: '#0d9488',
+                        borderRadius: 999,
+                        transition: 'width 250ms ease',
+                      }} />
+                    </div>
+                  </section>
                   {review.length > 0 && (
                     <div className="notice">
                       <span className="notice-icon">
