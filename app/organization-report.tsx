@@ -106,7 +106,41 @@ function createXlsx(sheets: Sheet[]): Uint8Array {
     const rows = sheet.rows.map((row, rowIndex) => {
       const cells = row.map((value, colIndex) => {
         const reference = letters(colIndex) + (rowIndex + 1);
-        const style = rowIndex === 0 ? ' s="1"' : '';
+        const header = rowIndex === 0;
+
+        let styleId = header ? 1 : 0;
+
+        if (!header && sheet.name === 'C\u00f4ng vi\u1ec7c' && colIndex === 2) {
+          const status = String(value);
+          const due = String(row[5] || '');
+          const isoDue = /^\d{2}\/\d{2}\/\d{4}$/.test(due)
+            ? due.slice(6) + '-' + due.slice(3, 5) + '-' + due.slice(0, 2)
+            : '';
+          const today = localDay();
+
+          if (status !== completed && status !== cancelled &&
+            isoDue && isoDue < today) {
+            styleId = 2;
+          } else if (status === waiting) {
+            styleId = 4;
+          } else if (status !== completed && status !== cancelled &&
+            isoDue && isoDue >= today) {
+            const diff = Math.floor(
+              (Date.parse(isoDue + 'T12:00:00Z') -
+                Date.parse(today + 'T12:00:00Z')) / 86400000
+            );
+            if (diff <= 3) styleId = 3;
+          }
+        }
+
+        if (!header && sheet.name === 'C\u1ea3nh b\u00e1o' && colIndex === 2) {
+          const priority = String(value);
+          if (priority === 'CAO') styleId = 2;
+          else if (priority === 'S\u1eaeP H\u1ea0N') styleId = 3;
+          else if (priority === 'C\u1ea6N DUY\u1ec6T') styleId = 4;
+        }
+
+        const style = styleId > 0 ? ' s="' + styleId + '"' : '';
 
         if (typeof value === 'number' && Number.isFinite(value)) {
           return '<c r="' + reference + '"' + style +
@@ -191,16 +225,22 @@ function createXlsx(sheets: Sheet[]): Uint8Array {
     '<font><sz val="11"/><name val="Calibri"/></font>' +
     '<font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font>' +
     '</fonts>' +
-    '<fills count="3">' +
+    '<fills count="6">' +
     '<fill><patternFill patternType="none"/></fill>' +
     '<fill><patternFill patternType="gray125"/></fill>' +
     '<fill><patternFill patternType="solid"><fgColor rgb="FF126B60"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFEE2E2"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFEF3C7"/><bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFDBEAFE"/><bgColor indexed="64"/></patternFill></fill>' +
     '</fills>' +
     '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="2">' +
+    '<cellXfs count="5">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="3" borderId="0" xfId="0" applyFill="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="4" borderId="0" xfId="0" applyFill="1"/>' +
+    '<xf numFmtId="0" fontId="0" fillId="5" borderId="0" xfId="0" applyFill="1"/>' +
     '</cellXfs>' +
     '</styleSheet>'
   );
@@ -249,6 +289,27 @@ function countSummary(tasks: Task[], today: string) {
   };
 }
 
+
+// TEAM360_REPORT_V45
+function reportDate(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const [year, month, day] = value.split('-');
+  return day + '/' + month + '/' + year;
+}
+
+function completionRate(completedCount: number, total: number): string {
+  return total > 0
+    ? (completedCount / total * 100).toFixed(1) + '%'
+    : '0.0%';
+}
+
+function reportPriority(alerts: SharedTaskAlert[]): string {
+  if (alerts.includes('overdue')) return 'CAO';
+  if (alerts.includes('pending')) return 'C\u1ea6N DUY\u1ec6T';
+  if (alerts.includes('soon')) return 'S\u1eaeP H\u1ea0N';
+  return 'B\u1ed4 SUNG TH\u00d4NG TIN';
+}
+
 function buildSheets(
   tasks: Task[],
   members: Member[],
@@ -286,6 +347,7 @@ function buildSheets(
     ['Gi\u1edbi h\u1ea1n ngu\u1ed3n', 'API hi\u1ec7n t\u1ea1i t\u1ed1i \u0111a 1000 c\u00f4ng vi\u1ec7c'],
     ['T\u1ed5ng c\u00f4ng vi\u1ec7c', summary.total],
     ['Ho\u00e0n th\u00e0nh', summary.completed],
+    ['T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh', completionRate(summary.completed, summary.total)],
     ['\u0110ang m\u1edf', summary.active],
     ['Qu\u00e1 h\u1ea1n', summary.overdue],
     ['Ch\u1edd duy\u1ec7t', summary.pending],
@@ -308,19 +370,25 @@ function buildSheets(
       .sort((a, b) => b.overdue - a.overdue || b.total - a.total)
       .map((group): Cell[] => [
         group.key, group.total, group.completed,
+        completionRate(group.completed, group.total),
         group.active, group.overdue, group.pending,
+        group.missingOwner, group.missingDue,
       ]);
   };
 
   const departments: Cell[][] = [
     ['Ph\u00f2ng ban', 'T\u1ed5ng', 'Ho\u00e0n th\u00e0nh',
-      '\u0110ang m\u1edf', 'Qu\u00e1 h\u1ea1n', 'Ch\u1edd duy\u1ec7t'],
+      'T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh', '\u0110ang m\u1edf',
+      'Qu\u00e1 h\u1ea1n', 'Ch\u1edd duy\u1ec7t',
+      'Thi\u1ebfu ng\u01b0\u1eddi nh\u1eadn', 'Thi\u1ebfu h\u1ea1n ch\u00f3t'],
     ...groups(departmentName),
   ];
 
   const people: Cell[][] = [
     ['Nh\u00e2n s\u1ef1', 'T\u1ed5ng', 'Ho\u00e0n th\u00e0nh',
-      '\u0110ang m\u1edf', 'Qu\u00e1 h\u1ea1n', 'Ch\u1edd duy\u1ec7t'],
+      'T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh', '\u0110ang m\u1edf',
+      'Qu\u00e1 h\u1ea1n', 'Ch\u1edd duy\u1ec7t',
+      'Thi\u1ebfu ng\u01b0\u1eddi nh\u1eadn', 'Thi\u1ebfu h\u1ea1n ch\u00f3t'],
     ...groups((task) => task.assignedTo
       ? ownerName(task) + ' [' + task.assignedTo + ']'
       : unassigned),
@@ -332,14 +400,14 @@ function buildSheets(
       'Ti\u1ebfn \u0111\u1ed9 (%)'],
     ...tasks.map((task): Cell[] => [
       task.id, task.title, task.status, ownerName(task),
-      departmentName(task), task.due || '', task.progress ?? 0,
+      departmentName(task), reportDate(task.due || ''), task.progress ?? 0,
     ]),
   ];
 
   const warnings: Cell[][] = [
-    ['ID', 'T\u00ean c\u00f4ng vi\u1ec7c', 'C\u1ea3nh b\u00e1o',
-      'Tr\u1ea1ng th\u00e1i', 'Ng\u01b0\u1eddi nh\u1eadn',
-      'H\u1ea1n ch\u00f3t'],
+    ['ID', 'T\u00ean c\u00f4ng vi\u1ec7c', 'M\u1ee9c \u0111\u1ed9',
+      'C\u1ea3nh b\u00e1o', 'Tr\u1ea1ng th\u00e1i',
+      'Ng\u01b0\u1eddi nh\u1eadn', 'H\u1ea1n ch\u00f3t'],
   ];
 
   for (const task of tasks) {
@@ -349,10 +417,11 @@ function buildSheets(
     warnings.push([
       task.id,
       task.title,
+      reportPriority(alerts),
       alerts.map((alert) => alertNames[alert]).join('; '),
       task.status,
       ownerName(task),
-      task.due || '',
+      reportDate(task.due || ''),
     ]);
   }
 
