@@ -93,10 +93,10 @@ export async function GET(req: Request) {
   const u = await getChatGPTUser();
   if (!u) return new Response("Unauthorized", { status: 401 });
   const id = new URL(req.url).searchParams.get("id");
-  const row: any = await db()
+  const row = await db()
     .prepare("SELECT data FROM records WHERE key=? AND owner=? AND kind='file'")
     .bind(u.userId + ":" + id, u.userId)
-    .first();
+    .first<{ data: string }>();
   if (!row) return new Response("Not found", { status: 404 });
   const object = await (env.BUCKET as R2Bucket).get(u.userId + "/" + id);
   if (!object) return new Response("Not found", { status: 404 });
