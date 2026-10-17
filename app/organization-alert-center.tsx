@@ -54,6 +54,65 @@ const filters: Array<{
   },
 ];
 
+
+// TEAM360_REMINDER_V42
+function reminderText(
+  task: Task,
+  alerts: SharedTaskAlert[],
+  channel: 'zalo' | 'email',
+): string {
+  const reasons: Record<SharedTaskAlert, string> = {
+    overdue: 'C\u00f4ng vi\u1ec7c \u0111\u00e3 qu\u00e1 h\u1ea1n.',
+    soon: 'C\u00f4ng vi\u1ec7c s\u1eafp \u0111\u1ebfn h\u1ea1n.',
+    pending: 'C\u00f4ng vi\u1ec7c \u0111ang ch\u1edd ph\u00ea duy\u1ec7t.',
+    'missing-owner': 'C\u00f4ng vi\u1ec7c ch\u01b0a c\u00f3 ng\u01b0\u1eddi nh\u1eadn.',
+    'missing-due': 'C\u00f4ng vi\u1ec7c ch\u01b0a c\u00f3 h\u1ea1n ch\u00f3t.',
+  };
+
+  const title = task.title.trim() || task.id;
+  const issues = alerts.map((alert) => '- ' + reasons[alert]).join('\n');
+  const due = task.due
+    ? '\nH\u1ea1n ch\u00f3t: ' + task.due.split('-').reverse().join('/')
+    : '';
+  const progress = '\nTi\u1ebfn \u0111\u1ed9: ' +
+    (task.progress ?? 0) + '%';
+
+  const request = alerts.includes('missing-owner') ||
+    alerts.includes('missing-due')
+      ? 'Vui l\u00f2ng b\u1ed5 sung th\u00f4ng tin c\u00f2n thi\u1ebfu v\u00e0 c\u1eadp nh\u1eadt t\u00ecnh tr\u1ea1ng x\u1eed l\u00fd.'
+      : alerts.includes('pending')
+        ? 'Vui l\u00f2ng ki\u1ec3m tra k\u1ebft qu\u1ea3 v\u00e0 th\u1ef1c hi\u1ec7n b\u01b0\u1edbc ph\u00ea duy\u1ec7t theo th\u1ea9m quy\u1ec1n.'
+        : 'Vui l\u00f2ng ki\u1ec3m tra, c\u1eadp nh\u1eadt ti\u1ebfn \u0111\u1ed9 v\u00e0 th\u00f4ng tin th\u1eddi gian x\u1eed l\u00fd d\u1ef1 ki\u1ebfn.';
+
+  if (channel === 'email') {
+    return [
+      'Ti\u00eau \u0111\u1ec1: Nh\u1eafc x\u1eed l\u00fd c\u00f4ng vi\u1ec7c - ' + title,
+      '',
+      'K\u00ednh g\u1eedi Anh/Ch\u1ecb,',
+      '',
+      'Hi\u1ec7n c\u00f4ng vi\u1ec7c "' + title +
+        '" c\u00f3 nh\u1eefng n\u1ed9i dung c\u1ea7n l\u01b0u \u00fd:',
+      issues,
+      due.trim(),
+      progress.trim(),
+      '',
+      request,
+      '',
+      'Tr\u00e2n tr\u1ecdng.',
+    ].filter((line) => line !== '').join('\n');
+  }
+
+  return [
+    'Anh/Ch\u1ecb vui l\u00f2ng l\u01b0u \u00fd c\u00f4ng vi\u1ec7c:',
+    title,
+    issues,
+    due.trim(),
+    progress.trim(),
+    request,
+    'C\u1ea3m \u01a1n Anh/Ch\u1ecb!',
+  ].filter((line) => line !== '').join('\n');
+}
+
 export default function OrganizationAlertCenter({
   workspaceId,
   tasks,
@@ -62,6 +121,32 @@ export default function OrganizationAlertCenter({
   tasks: Task[];
 }) {
   const [filter, setFilter] = useState<SharedTaskAlert | 'all'>('all');
+
+  const [copyNotice, setCopyNotice] = useState('');
+
+  async function copyReminder(
+    task: Task,
+    alerts: SharedTaskAlert[],
+    channel: 'zalo' | 'email',
+  ) {
+    if (alerts.length === 0) return;
+
+    try {
+      await navigator.clipboard.writeText(
+        reminderText(task, alerts, channel)
+      );
+      setCopyNotice(
+        channel === 'zalo'
+          ? '\u0110\u00e3 sao ch\u00e9p n\u1ed9i dung Zalo.'
+          : '\u0110\u00e3 sao ch\u00e9p n\u1ed9i dung email.'
+      );
+    } catch {
+      setCopyNotice(
+        'Kh\u00f4ng th\u1ec3 sao ch\u00e9p. Vui l\u00f2ng ki\u1ec3m tra quy\u1ec1n clipboard.'
+      );
+    }
+  }
+
   const today = localDay();
 
   const records = tasks.map((task) => ({
@@ -183,6 +268,13 @@ export default function OrganizationAlertCenter({
         {' c\u00f4ng vi\u1ec7c c\u1ea7n quan t\u00e2m'}
       </div>
 
+
+      {copyNotice && (
+        <p role="status" aria-live="polite"
+          style={{ fontSize: 12, color: '#0f766e' }}>
+          {copyNotice}
+        </p>
+      )}
       {visible.length === 0 ? (
         <p className="muted" style={{ padding: '14px 0' }}>
           {'Kh\u00f4ng c\u00f3 c\u00f4ng vi\u1ec7c trong nh\u00f3m n\u00e0y.'}
@@ -190,16 +282,14 @@ export default function OrganizationAlertCenter({
       ) : (
         <div style={{ display: 'grid', gap: 10, maxHeight: 460, overflowY: 'auto' }}>
           {visible.map(({ task, alerts }) => (
-            <a
+            <div
               key={task.id}
-              href={detailUrl(task.id)}
               style={{
-                display: 'block',
                 padding: 14,
                 border: '1px solid #e2e8f0',
                 borderRadius: 10,
-                color: 'inherit',
-                textDecoration: 'none',
+                display: 'grid',
+                gap: 12,
               }}
             >
               <div style={{
@@ -207,7 +297,6 @@ export default function OrganizationAlertCenter({
                 justifyContent: 'space-between',
                 gap: 8,
                 flexWrap: 'wrap',
-                marginBottom: 8,
               }}>
                 <strong style={{ overflowWrap: 'anywhere' }}>
                   {task.title}
@@ -216,7 +305,12 @@ export default function OrganizationAlertCenter({
                   {task.due || '--'}  {task.progress ?? 0}%
                 </span>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 6,
+              }}>
                 {alerts.map((key) => {
                   const info = filters.find((f) => f.key === key);
                   return (
@@ -236,7 +330,36 @@ export default function OrganizationAlertCenter({
                   );
                 })}
               </div>
-            </a>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <a
+                  className="btn secondary compact"
+                  href={detailUrl(task.id)}
+                  style={{ textDecoration: 'none' }}
+                >
+                  {'Chi ti\u1ebft'}
+                </a>
+                <button
+                  type="button"
+                  className="btn secondary compact"
+                  onClick={() => void copyReminder(task, alerts, 'zalo')}
+                >
+                  {'Sao ch\u00e9p Zalo'}
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary compact"
+                  onClick={() => void copyReminder(task, alerts, 'email')}
+                >
+                  {'Sao ch\u00e9p email'}
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}
