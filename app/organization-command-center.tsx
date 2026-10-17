@@ -459,14 +459,28 @@ export default function OrganizationCommandCenter({
   }
 
   async function saveServerDraft() {
-    if (!selected || !draft.trim() || serverBusy) return;
+    if (!selected) {
+      setServerNotice('Chua chon cong viec de luu.');
+      return;
+    }
+
+    if (!draft.trim()) {
+      setServerNotice('Noi dung du thao dang trong.');
+      return;
+    }
+
+    if (serverBusy) {
+      setServerNotice('Yeu cau truoc dang duoc xu ly.');
+      return;
+    }
+
+    setServerNotice('Da nhan thao tac luu. Dang ket noi API D1...');
 
     const key = draftKey;
     const taskId = selected.task.id;
     const existing = serverDrafts[key];
 
     setServerBusy(true);
-    setServerNotice('');
 
     try {
       // Read existing drafts first: never silently create a duplicate
@@ -856,8 +870,19 @@ export default function OrganizationCommandCenter({
             )}
 
             {serverNotice && (
-              <p role="status" aria-live="polite"
-                style={{ fontSize: 12, margin: 0 }}>
+              <p
+                role="status"
+                aria-live="polite"
+                style={{
+                  fontSize: 13,
+                  margin: 0,
+                  padding: 10,
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  color: '#0f172a',
+                }}
+              >
                 {serverNotice}
               </p>
             )}
