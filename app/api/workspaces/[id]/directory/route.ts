@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { validWriteOrigin } from '../../../../../lib/auth-api';
 import { getChatGPTUser } from "../../../../chatgpt-auth";
 
 type Context = { params: Promise<{ id: string }> };
@@ -24,13 +25,7 @@ async function activeMember(
     .bind(workspaceId, userId)
     .first<Member>();
 }
-function sameOrigin(req: Request) {
-  const origin = req.headers.get("origin");
-  return (
-    (!origin || origin === new URL(req.url).origin) &&
-    req.headers.get("sec-fetch-site") !== "cross-site"
-  );
-}
+
 async function parseBody(
   req: Request,
 ): Promise<Record<string, unknown> | null> {
@@ -81,7 +76,7 @@ export async function GET(_req: Request, ctx: Context) {
 export async function POST(req: Request, ctx: Context) {
   const user = await getChatGPTUser();
   if (!user) return send({ error: "Vui lòng đăng nhập." }, 401);
-  if (!sameOrigin(req))
+  if (!validWriteOrigin(req))
     return send({ error: "Nguồn yêu cầu không hợp lệ." }, 403);
   const { id } = await ctx.params;
   if (!validWorkspaceId(id))
@@ -133,7 +128,7 @@ export async function POST(req: Request, ctx: Context) {
 export async function PATCH(req: Request, ctx: Context) {
   const user = await getChatGPTUser();
   if (!user) return send({ error: "Vui lòng đăng nhập." }, 401);
-  if (!sameOrigin(req))
+  if (!validWriteOrigin(req))
     return send({ error: "Nguồn yêu cầu không hợp lệ." }, 403);
   const { id } = await ctx.params;
   if (!validWorkspaceId(id))

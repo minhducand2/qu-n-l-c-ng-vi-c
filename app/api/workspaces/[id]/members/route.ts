@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { validWriteOrigin } from '../../../../../lib/auth-api';
 import { getChatGPTUser } from '../../../../chatgpt-auth';
 import { requireWorkspacePermission, AccessDeniedError } from '../../../../../lib/workspace-auth';
 
@@ -14,11 +15,7 @@ const validId = (id: unknown): id is string =>
   typeof id === 'string' && id.length > 0 && id.length <= 200 && !/[\x00-\x1f\x7f]/.test(id);
 const validRole = (role: unknown): role is Role =>
   typeof role === 'string' && ROLES.includes(role as Role);
-function safePost(req: Request) {
-  const origin = req.headers.get('origin');
-  const url = new URL(req.url);
-  return (!origin || origin === url.origin) && req.headers.get('sec-fetch-site') !== 'cross-site';
-}
+
 async function getBody(req: Request): Promise<Record<string, unknown>> {
   if (!req.headers.get('content-type')?.toLowerCase().startsWith('application/json'))
     throw new Error('Yêu cầu phải sử dụng JSON.');
@@ -54,7 +51,7 @@ export async function GET(_req: Request, ctx: Context) {
 export async function POST(req: Request, ctx: Context) {
   const user = await getChatGPTUser();
   if (!user) return json({ error: 'Vui lòng đăng nhập.' }, 401);
-  if (!safePost(req)) return json({ error: 'Nguồn yêu cầu không hợp lệ.' }, 403);
+  if (!validWriteOrigin(req)) return json({ error: 'Nguồn yêu cầu không hợp lệ.' }, 403);
   try {
     const { id } = await ctx.params;
     await requireWorkspacePermission(db(), user.userId, id, 'members.manage');
@@ -64,9 +61,9 @@ export async function POST(req: Request, ctx: Context) {
     const now = new Date().toISOString();
     const result = await db()
       .prepare(
-        "INSERT OR IGNORE INTO memberships (workspace_id,user_id,role,status,joined_at) VALUES (?,?,?,'active',?)",
+        "INSERT OR IGNORE INTO memberships (workspace_id,user_id,role,status,joined_at) SELECT ?,u.id,?,'active',? FROM auth_users u WHERE u.id=? AND u.status='active'",
       )
-      .bind(id, body.userId, body.role, now)
+      .bind(id, body.role, now, body.userId)
       .run();
     if (result.meta.changes !== 1)
       return json({ error: 'Thành viên đã tồn tại. Sử dụng chức năng cập nhật.' }, 409);
@@ -91,7 +88,7 @@ export async function POST(req: Request, ctx: Context) {
 export async function PATCH(req: Request, ctx: Context) {
   const user = await getChatGPTUser();
   if (!user) return json({ error: 'Vui lòng đăng nhập.' }, 401);
-  if (!safePost(req)) return json({ error: 'Nguồn yêu cầu không hợp lệ.' }, 403);
+  if (!validWriteOrigin(req)) return json({ error: 'Nguồn yêu cầu không hợp lệ.' }, 403);
   try {
     const { id } = await ctx.params;
     await requireWorkspacePermission(db(), user.userId, id, 'members.manage');
