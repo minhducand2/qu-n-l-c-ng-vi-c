@@ -30,18 +30,47 @@ export function clientIp(req: Request): string | null {
   const raw = req.headers.get('cf-connecting-ip');
   return raw && raw.length < 65 ? raw : null;
 }
-export async function consumeLoginAttempt(db: D1Database, key: string, now: number): Promise<boolean> {
-  // Atomic conditional increment. First attempt initializes window.
-  const windowStart = new Date(now - 15 * 60_000).toISOString();
-  const currentTime = new Date(now).toISOString();
-  const outcome = await db.prepare(`
-    INSERT INTO auth_login_limits (account_key, attempts, window_started_at, updated_at)
+export async function consumeLoginAttempt(
+  db: D1Database,
+  key: string,
+  now: number,
+): Promise<string | null> {
+  const threshold = new Date(now - 15 * 60_000).toISOString();
+  const timestamp = new Date(now).toISOString();
+
+  const row = await db.prepare(`
+    INSERT INTO auth_login_limits
+      (account_key, attempts, window_started_at, updated_at)
     VALUES (?, 1, ?, ?)
     ON CONFLICT(account_key) DO UPDATE SET
-      attempts = CASE WHEN window_started_at < ? THEN 1 ELSE attempts + 1 END,
-      window_started_at = CASE WHEN window_started_at < ? THEN excluded.window_started_at ELSE window_started_at END,
+      attempts = CASE
+        WHEN window_started_at < ? THEN 1
+        ELSE attempts + 1
+      END,
+      window_started_at = CASE
+        WHEN window_started_at < ? THEN excluded.window_started_at
+        ELSE window_started_at
+      END,
       updated_at = excluded.updated_at
     WHERE window_started_at < ? OR attempts < 5
-  `).bind(key, currentTime, currentTime, windowStart, windowStart, windowStart).run();
-  return outcome.meta.changes === 1;
+    RETURNING window_started_at
+  `).bind(
+    key, timestamp, timestamp,
+    threshold, threshold, threshold
+  ).first<{ window_started_at: string }>();
+
+  return row?.window_started_at ?? null;
+}
+
+
+// Release a reserved attempt after successful authentication.
+// Only releases one reservation; never makes attempts negative.
+export async function releaseLoginAttempt(
+  db: D1Database,
+  key: string,
+  windowStartedAt: string,
+): Promise<void> {
+  await db.prepare(
+    'UPDATE auth_login_limits SET attempts = MAX(0, attempts - 1) WHERE account_key = ? AND window_started_at = ?'
+  ).bind(key, windowStartedAt).run();
 }
