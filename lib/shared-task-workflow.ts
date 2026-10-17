@@ -24,3 +24,49 @@ export function assessSharedTask(task:TaskLike,today:string,remindDays=3):'compl
  const diff=Math.round((Date.parse(task.due+'T00:00:00Z')-Date.parse(today+'T00:00:00Z'))/86400000);
  return diff>=0&&diff<=remindDays?'soon':'normal';
 }
+
+export type SharedTaskAlert =
+  | 'pending'
+  | 'overdue'
+  | 'soon'
+  | 'missing-owner'
+  | 'missing-due';
+
+export function getSharedTaskAlerts(
+  task: TaskLike,
+  today: string,
+  remindDays = 3,
+): SharedTaskAlert[] {
+  if (
+    task.status === 'Ho?n th?nh' ||
+    task.status === '?? h?y'
+  ) {
+    return [];
+  }
+
+  const alerts: SharedTaskAlert[] = [];
+
+  if (task.status === 'Ch? duy?t') {
+    alerts.push('pending');
+  }
+
+  if (!task.assignedTo) {
+    alerts.push('missing-owner');
+  }
+
+  if (!task.due) {
+    alerts.push('missing-due');
+  } else if (task.due < today) {
+    alerts.push('overdue');
+  } else {
+    const start = Date.parse(today + 'T00:00:00Z');
+    const end = Date.parse(task.due + 'T00:00:00Z');
+    const diff = Math.round((end - start) / 86400000);
+
+    if (Number.isFinite(diff) && diff >= 0 && diff <= remindDays) {
+      alerts.push('soon');
+    }
+  }
+
+  return alerts;
+}
