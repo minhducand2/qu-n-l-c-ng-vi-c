@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Plus, RefreshCw, Users, Save, X, AlertTriangle } from 'lucide-react';
 import { statuses, priorities, validateTask, localDay } from '../lib/domain';
-import { assessSharedTask } from '../lib/shared-task-workflow';
+import { assessSharedTask, getSharedTaskAlerts } from '../lib/shared-task-workflow';
 
 type Organization = { id: string; name: string; role: string; status: string };
 type Member = {
@@ -78,8 +78,17 @@ export default function SharedTasksPanel() {
   const isStoredPending = storedTask?.status === 'Chờ duyệt';
   const counts = tasks.reduce(
     (acc, t) => {
-      const key = assessSharedTask(t, localDay());
-      acc[key] = (acc[key] || 0) + 1;
+      const today = localDay();
+      const state = assessSharedTask(t, today);
+      const alerts = getSharedTaskAlerts(t, today);
+
+      if (state === 'completed' || state === 'cancelled' || state === 'normal') {
+        acc[state] = (acc[state] || 0) + 1;
+      }
+
+      for (const alert of alerts) {
+        acc[alert] = (acc[alert] || 0) + 1;
+      }
       return acc;
     },
     {} as Record<string, number>,
@@ -452,7 +461,36 @@ export default function SharedTasksPanel() {
                     <td>{memberLabel(t.assignedTo)}</td>
                     <td>
                       {t.status}
-                      {assessSharedTask(t, localDay()) === 'overdue' ? ' · Quá hạn' : ''}
+                      {getSharedTaskAlerts(t, localDay()).map((alert) => (
+                        <span
+                          key={alert}
+                          style={{
+                            display: 'inline-block',
+                            marginLeft: 6,
+                            marginTop: 3,
+                            padding: '2px 7px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background:
+                              alert === 'overdue' ? '#fee2e2' :
+                              alert === 'soon' ? '#fef3c7' :
+                              alert === 'pending' ? '#dbeafe' : '#f1f5f9',
+                            color:
+                              alert === 'overdue' ? '#b91c1c' :
+                              alert === 'soon' ? '#92400e' :
+                              alert === 'pending' ? '#1d4ed8' : '#475569',
+                          }}
+                        >
+                          {{
+                            overdue: 'Qu? h?n',
+                            soon: 'S?p h?n',
+                            pending: 'Ch? duy?t',
+                            'missing-owner': 'Thi?u ng??i nh?n',
+                            'missing-due': 'Thi?u h?n',
+                          }[alert]}
+                        </span>
+                      ))}
                     </td>
                     <td>{t.due ? t.due.split('-').reverse().join('/') : 'Chưa có'}</td>
                     <td>{t.progress}%</td>
