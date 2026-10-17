@@ -332,7 +332,12 @@ export async function PATCH(req: Request) {
         'UPDATE directive_drafts ' +
         'SET title=?,body=?,version=?,updated_by=?,updated_at=? ' +
         "WHERE id=? AND workspace_id=? AND task_id=? " +
-        "AND status='draft' AND version=?"
+        "AND status='draft' AND version=? " +
+        "AND NOT EXISTS (" +
+        "SELECT 1 FROM directive_approvals a " +
+        "WHERE a.draft_id=directive_drafts.id " +
+        "AND a.status IN ('submitted','approved')" +
+        ")"
       ).bind(
         title, content, nextVersion, user.userId, now,
         draftId, workspaceId, taskId, expectedVersion,
