@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import OrganizationReportInsights from './organization-report-insights';
 import { zipSync, strToU8 } from 'fflate';
 import {
   getSharedTaskAlerts,
@@ -783,6 +784,19 @@ export default function OrganizationReport({
             {'Ph\u1ea1m vi: ch\u1ec9 c\u00f4ng vi\u1ec7c t\u00e0i kho\u1ea3n c\u00f3 quy\u1ec1n xem; API hi\u1ec7n t\u1ea1i c\u00f3 th\u1ec3 gi\u1edbi h\u1ea1n 1.000 c\u00f4ng vi\u1ec7c. Bi\u1ec3u \u0111\u1ed3 hi\u1ec3n th\u1ecb t\u1ed1i \u0111a 12 nh\u00f3m.'}
           </p>
         </div>
+      )}
+
+      {isReady && validRange && (
+        <OrganizationReportInsights
+          key={workspaceId}
+          workspaceId={workspaceId}
+          allTasks={tasks}
+          selectedTasks={selectedTasks}
+          period={period}
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          today={today}
+        />
       )}
 
       {notice && <p role="status" aria-live="polite">{notice}</p>}
