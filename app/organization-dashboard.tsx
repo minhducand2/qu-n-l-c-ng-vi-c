@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import OrganizationAnalytics from './organization-analytics';
 
 type Space = {
   id: string;
@@ -14,6 +15,7 @@ type Task = {
   status: string;
   due?: string;
   progress?: number;
+  assignedTo?: string | null;
 };
 
 type Result<T> = { data: T; workspaceId: string };
@@ -276,6 +278,7 @@ export default function OrganizationDashboard() {
             </div>
           </div>
 
+          <OrganizationAnalytics key={selected} workspaceId={selected} tasks={tasks} />
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
