@@ -560,6 +560,28 @@ export default function Workspace({ userName }: { userName: string }) {
     ...late.map((t) => ({ task: t, text: 'Đã qua hạn · ' + dateText(t.due) })),
     ...soon.map((t) => ({ task: t, text: 'Sắp đến hạn · ' + dateText(t.due) })),
   ];
+
+  const interventions = tasks
+    .filter((t) => !['Hoàn thành', 'Đã hủy'].includes(t.status))
+    .map((t) => ({
+      task: t,
+      level: overdue(t)
+        ? 0
+        : t.status === 'Chờ duyệt'
+          ? 1
+          : soon.some((s) => s.id === t.id)
+            ? 2
+            : -1,
+    }))
+    .filter((item) => item.level >= 0)
+    .sort((a, b) =>
+      a.level - b.level ||
+      String(a.task.due || '9999-12-31').localeCompare(
+        String(b.task.due || '9999-12-31')
+      )
+    )
+    .slice(0, 8);
+
   async function save(record: Row, action = 'save', why = '') {
     setSaving(true);
     try {
@@ -1198,6 +1220,113 @@ export default function Workspace({ userName }: { userName: string }) {
                         transition: 'width 250ms ease',
                       }} />
                     </div>
+                  </section>
+                  <section
+                    className="panel"
+                    aria-label="Danh sach can can thiep"
+                    style={{ padding: 22, marginBottom: 20 }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      marginBottom: 18,
+                    }}>
+                      <div>
+                        <h2 style={{ margin: 0, fontSize: 19 }}>
+                          Công việc cần can thiệp
+                        </h2>
+                        <p className="muted" style={{ margin: '6px 0 0' }}>
+                          Tối đa 8 công việc ưu tiên trong không gian của bạn
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn secondary compact"
+                        onClick={() => go('tasks')}
+                      >
+                        Xem tất cả <ArrowRight size={16} />
+                      </button>
+                    </div>
+
+                    {interventions.length === 0 ? (
+                      <div style={{
+                        padding: '25px 12px',
+                        textAlign: 'center',
+                        color: '#64748b',
+                      }}>
+                        Không có công việc cần can thiệp.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {interventions.map(({ task, level }) => (
+                          <div
+                            key={task.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 14,
+                              flexWrap: 'wrap',
+                              padding: '13px 15px',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 10,
+                              background: '#ffffff',
+                            }}
+                          >
+                            <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                                marginBottom: 6,
+                              }}>
+                                <strong style={{ overflowWrap: 'anywhere' }}>
+                                  {task.title}
+                                </strong>
+                                <span style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '4px 8px',
+                                  borderRadius: 6,
+                                  background: level === 0
+                                    ? '#fee2e2'
+                                    : level === 1
+                                      ? '#dbeafe'
+                                      : '#fef3c7',
+                                  color: level === 0
+                                    ? '#b91c1c'
+                                    : level === 1
+                                      ? '#1d4ed8'
+                                      : '#92400e',
+                                }}>
+                                  {level === 0
+                                    ? 'Quá hạn'
+                                    : level === 1
+                                      ? 'Chờ duyệt'
+                                      : 'Sắp hạn'}
+                                </span>
+                              </div>
+                              <div className="muted" style={{ fontSize: 12 }}>
+                                Hạn: {dateText(task.due)}
+                                {' · '}
+                                Tiến độ: {task.progress ?? 0}%
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn secondary compact"
+                              onClick={() => openTask(task)}
+                            >
+                              Chi tiết <ArrowRight size={15} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </section>
                   {review.length > 0 && (
                     <div className="notice">
