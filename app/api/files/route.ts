@@ -33,7 +33,9 @@ export async function POST(req: Request) {
       return new Response("Not found", { status: 404 });
     const id = crypto.randomUUID();
     const key = u.userId + "/" + id;
-    await (env.BUCKET as R2Bucket).put(key, await file.arrayBuffer());
+    const bucket = env.BUCKET as R2Bucket;
+    await bucket.put(key, await file.arrayBuffer());
+
     const record = {
       id,
       kind: "file",
@@ -42,18 +44,35 @@ export async function POST(req: Request) {
       taskId,
       author: u.displayName,
     };
-    await db()
-      .prepare(
-        "INSERT INTO records (key,owner,kind,data,version,updated) VALUES (?,?,?,?,1,?)",
-      )
-      .bind(
-        u.userId + ":" + id,
-        u.userId,
-        "file",
-        JSON.stringify(record),
-        new Date().toISOString(),
-      )
-      .run();
+
+    try {
+      const result = await db()
+        .prepare(
+          "INSERT INTO records (key,owner,kind,data,version,updated) VALUES (?,?,?,?,1,?)",
+        )
+        .bind(
+          u.userId + ":" + id,
+          u.userId,
+          "file",
+          JSON.stringify(record),
+          new Date().toISOString(),
+        )
+        .run();
+
+      if (!result.success || result.meta.changes !== 1) {
+        throw new Error("D1 insert not confirmed");
+      }
+    } catch (error) {
+      try {
+        await bucket.delete(key);
+      } catch (cleanupError) {
+        console.error("R2 cleanup failed after D1 error", {
+          key,
+          cleanupError,
+        });
+      }
+      throw error;
+    }
     return Response.json({ ok: true });
   } catch {
     return Response.json({ error: "Tải tệp thất bại." }, { status: 500 });

@@ -1,0 +1,97 @@
+import { unzipSync } from "fflate";
+
+export type AllowedFileExtension =
+  | "pdf" | "docx" | "xlsx" | "csv" | "txt"
+  | "png" | "jpg" | "jpeg" | "webp";
+
+export type FileValidationResult =
+  | { ok: true; extension: AllowedFileExtension }
+  | { ok: false; reason: string };
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+const extensions = new Set<AllowedFileExtension>([
+  "pdf", "docx", "xlsx", "csv", "txt",
+  "png", "jpg", "jpeg", "webp",
+]);
+
+function startsWith(bytes: Uint8Array, signature: number[]): boolean {
+  return signature.every((value, index) => bytes[index] === value);
+}
+
+function validText(bytes: Uint8Array): boolean {
+  try {
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return !/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(text);
+  } catch {
+    return false;
+  }
+}
+
+function validZipDocument(
+  bytes: Uint8Array,
+  extension: "docx" | "xlsx",
+): boolean {
+  if (!startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) return false;
+
+  try {
+    const files = unzipSync(bytes, {
+      filter: (entry) =>
+        entry.name === "[Content_Types].xml" ||
+        entry.name === "_rels/.rels" ||
+        entry.name === (extension === "docx"
+          ? "word/document.xml"
+          : "xl/workbook.xml"),
+    });
+
+    const required = [
+      "[Content_Types].xml",
+      "_rels/.rels",
+      extension === "docx" ? "word/document.xml" : "xl/workbook.xml",
+    ];
+
+    return required.every((name) => files[name] instanceof Uint8Array);
+  } catch {
+    return false;
+  }
+}
+
+export function validateFileContent(
+  filename: string,
+  bytes: Uint8Array,
+): FileValidationResult {
+  const extension = filename.split(".").pop()?.toLowerCase();
+
+  if (!extension || !extensions.has(extension as AllowedFileExtension)) {
+    return { ok: false, reason: "Unsupported file extension" };
+  }
+
+  if (bytes.length === 0 || bytes.length > MAX_FILE_BYTES) {
+    return { ok: false, reason: "Invalid file size" };
+  }
+
+  const checks: Record<AllowedFileExtension, () => boolean> = {
+    pdf: () => startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d]),
+    png: () => startsWith(bytes, [
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]),
+    jpg: () => startsWith(bytes, [0xff, 0xd8, 0xff]),
+    jpeg: () => startsWith(bytes, [0xff, 0xd8, 0xff]),
+    webp: () =>
+      bytes.length >= 12 &&
+      startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) &&
+      startsWith(bytes.subarray(8), [0x57, 0x45, 0x42, 0x50]),
+    docx: () => validZipDocument(bytes, "docx"),
+    xlsx: () => validZipDocument(bytes, "xlsx"),
+    txt: () => validText(bytes),
+    csv: () => validText(bytes),
+  };
+
+  const allowed = extension as AllowedFileExtension;
+
+  if (!checks[allowed]()) {
+    return { ok: false, reason: "File content does not match extension" };
+  }
+
+  return { ok: true, extension: allowed };
+}
