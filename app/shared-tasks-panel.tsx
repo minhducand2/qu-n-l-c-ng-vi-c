@@ -298,7 +298,7 @@ export default function SharedTasksPanel() {
     }
   }
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div style={{ display: 'grid', gap: 18, alignContent: 'start', minWidth: 0 }}>
       <section className="panel">
         <div
           className="settings-body"
@@ -306,11 +306,11 @@ export default function SharedTasksPanel() {
             display: 'flex',
             flexWrap: 'wrap',
             gap: 12,
-            alignItems: 'end',
+            alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
-          <label className="field" style={{ minWidth: 240, flex: '1 1 260px' }}>
+          <label className="field" style={{ minWidth: 240, flex: '1 1 360px', margin: 0 }}>
             Tổ chức
             <select
               value={workspaceId}
@@ -325,7 +325,7 @@ export default function SharedTasksPanel() {
               ))}
             </select>
           </label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <a
               href="/cong-viec-cua-toi"
               className="btn secondary"
@@ -368,7 +368,15 @@ export default function SharedTasksPanel() {
       )}
       {!!workspaceId && (
         <section className="panel">
-          <div className="settings-body" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <div
+            className="settings-body"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 155px), 1fr))',
+              gap: 12,
+              alignItems: 'stretch',
+            }}
+          >
             {[
               ['Chờ duyệt', 'pending'],
               ['Quá hạn', 'overdue'],
@@ -377,10 +385,28 @@ export default function SharedTasksPanel() {
               ['Thiếu hạn', 'missing-due'],
               ['Hoàn thành', 'completed'],
             ].map(([label, key]) => (
-              <div key={key} style={{ minWidth: 115 }}>
-                <div className="muted">{label}</div>
-                <strong style={{ fontSize: 22 }}>{counts[key] || 0}</strong>
-              </div>
+              <div
+                  key={key}
+                  style={{
+                    minWidth: 0,
+                    minHeight: 88,
+                    padding: '15px 17px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 12,
+                    background: '#ffffff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                  }}
+                >
+                  <div className="muted" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                    {label}
+                  </div>
+                  <strong style={{ fontSize: 26, lineHeight: 1.1, fontWeight: 700 }}>
+                    {counts[key] || 0}
+                  </strong>
+                </div>
             ))}
           </div>
         </section>
@@ -396,7 +422,14 @@ export default function SharedTasksPanel() {
         {!!workspaceId && (
           <div
             className="settings-body"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 12,
+              alignItems: 'center',
+              paddingTop: 16,
+              paddingBottom: 16,
+            }}
           >
             <input
               aria-label="Tìm công việc chung"
