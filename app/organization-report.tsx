@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { zipSync, strToU8 } from 'fflate';
 import {
   getSharedTaskAlerts,
   type SharedTaskAlert,
@@ -56,29 +57,160 @@ function xmlEscape(value: Cell): string {
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 }
 
-function createWorkbook(sheets: Sheet[]): string {
-  const xmlSheets = sheets.map((sheet) => {
-    const rows = sheet.rows.map((row, index) =>
-      '<Row>' + row.map((value) => {
-        const type = typeof value === 'number' &&
-          Number.isFinite(value) ? 'Number' : 'String';
-        return '<Cell' + (index === 0 ? ' ss:StyleID="Header"' : '') +
-          '><Data ss:Type="' + type + '">' +
-          xmlEscape(value) + '</Data></Cell>';
-      }).join('') + '</Row>'
+
+// TEAM360_XLSX_V44 - Native Open XML XLSX workbook.
+function createXlsx(sheets: Sheet[]): Uint8Array {
+  const xml = (value: string) =>
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + value;
+
+  const files: Record<string, Uint8Array> = {};
+  const put = (name: string, value: string) => {
+    files[name] = strToU8(xml(value));
+  };
+
+  const spreadsheet =
+    'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const relationships =
+    'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const packageRels =
+    'http://schemas.openxmlformats.org/package/2006/relationships';
+
+  const letters = (index: number): string => {
+    let result = '';
+    let n = index + 1;
+    while (n > 0) {
+      n -= 1;
+      result = String.fromCharCode(65 + n % 26) + result;
+      n = Math.floor(n / 26);
+    }
+    return result;
+  };
+
+  const worksheetXml = (sheet: Sheet) => {
+    const maxCols = Math.max(1, ...sheet.rows.map(row => row.length));
+    const widths = Array.from({ length: maxCols }, (_, index) => {
+      let width = 12;
+      for (const row of sheet.rows.slice(0, 250)) {
+        const text = String(row[index] ?? '');
+        width = Math.max(width, Math.min(52, [...text].length + 3));
+      }
+      return width;
+    });
+
+    const columns = widths.map((width, index) =>
+      '<col min="' + (index + 1) +
+      '" max="' + (index + 1) +
+      '" width="' + width + '" customWidth="1"/>'
     ).join('');
 
-    return '<Worksheet ss:Name="' + xmlEscape(sheet.name) +
-      '"><Table>' + rows + '</Table></Worksheet>';
-  }).join('');
+    const rows = sheet.rows.map((row, rowIndex) => {
+      const cells = row.map((value, colIndex) => {
+        const reference = letters(colIndex) + (rowIndex + 1);
+        const style = rowIndex === 0 ? ' s="1"' : '';
 
-  return '<?xml version="1.0" encoding="UTF-8"?>' +
-    '<?mso-application progid="Excel.Sheet"?>' +
-    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" ' +
-    'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
-    '<Styles><Style ss:ID="Header"><Font ss:Bold="1"/>' +
-    '<Interior ss:Color="#DCEEEA" ss:Pattern="Solid"/>' +
-    '</Style></Styles>' + xmlSheets + '</Workbook>';
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          return '<c r="' + reference + '"' + style +
+            '><v>' + value + '</v></c>';
+        }
+
+        const safe = xmlEscape(String(value).slice(0, 32767));
+
+        return '<c r="' + reference + '"' + style +
+          ' t="inlineStr"><is><t xml:space="preserve">' +
+          safe + '</t></is></c>';
+      }).join('');
+
+      return '<row r="' + (rowIndex + 1) + '">' +
+        cells + '</row>';
+    }).join('');
+
+    const lastCell = letters(maxCols - 1) +
+      Math.max(1, sheet.rows.length);
+
+    return '<worksheet xmlns="' + spreadsheet + '">' +
+      '<dimension ref="A1:' + lastCell + '"/>' +
+      '<sheetViews><sheetView workbookViewId="0">' +
+      '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>' +
+      '<selection pane="bottomLeft" activeCell="A2" sqref="A2"/>' +
+      '</sheetView></sheetViews>' +
+      '<sheetFormatPr defaultRowHeight="18"/>' +
+      '<cols>' + columns + '</cols>' +
+      '<sheetData>' + rows + '</sheetData>' +
+      '<autoFilter ref="A1:' + lastCell + '"/>' +
+      '</worksheet>';
+  };
+
+  put('[Content_Types].xml',
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+    sheets.map((_, index) =>
+      '<Override PartName="/xl/worksheets/sheet' + (index + 1) +
+      '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+    ).join('') +
+    '</Types>'
+  );
+
+  put('_rels/.rels',
+    '<Relationships xmlns="' + packageRels + '">' +
+    '<Relationship Id="rId1" Type="' + relationships +
+    '/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>'
+  );
+
+  put('xl/workbook.xml',
+    '<workbook xmlns="' + spreadsheet +
+    '" xmlns:r="' + relationships + '">' +
+    '<bookViews><workbookView/></bookViews>' +
+    '<sheets>' +
+    sheets.map((sheet, index) =>
+      '<sheet name="' + xmlEscape(sheet.name) +
+      '" sheetId="' + (index + 1) +
+      '" r:id="rId' + (index + 1) + '"/>'
+    ).join('') +
+    '</sheets></workbook>'
+  );
+
+  put('xl/_rels/workbook.xml.rels',
+    '<Relationships xmlns="' + packageRels + '">' +
+    sheets.map((_, index) =>
+      '<Relationship Id="rId' + (index + 1) +
+      '" Type="' + relationships +
+      '/worksheet" Target="worksheets/sheet' + (index + 1) + '.xml"/>'
+    ).join('') +
+    '<Relationship Id="rId' + (sheets.length + 1) +
+    '" Type="' + relationships + '/styles" Target="styles.xml"/>' +
+    '</Relationships>'
+  );
+
+  put('xl/styles.xml',
+    '<styleSheet xmlns="' + spreadsheet + '">' +
+    '<fonts count="2">' +
+    '<font><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><color rgb="FFFFFFFF"/><sz val="11"/><name val="Calibri"/></font>' +
+    '</fonts>' +
+    '<fills count="3">' +
+    '<fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF126B60"/><bgColor indexed="64"/></patternFill></fill>' +
+    '</fills>' +
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="2">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>' +
+    '</cellXfs>' +
+    '</styleSheet>'
+  );
+
+  sheets.forEach((sheet, index) => {
+    put('xl/worksheets/sheet' + (index + 1) + '.xml',
+      worksheetXml(sheet));
+  });
+
+  return zipSync(files, { level: 6 });
 }
 
 function weekStart(day: string): string {
@@ -225,11 +357,11 @@ function buildSheets(
   }
 
   return [
-    { name: 'Tong quan', rows: overview },
-    { name: 'Phong ban', rows: departments },
-    { name: 'Nhan su', rows: people },
-    { name: 'Cong viec', rows: details },
-    { name: 'Canh bao', rows: warnings },
+    { name: 'T\u1ed5ng quan', rows: overview },
+    { name: 'Ph\u00f2ng ban', rows: departments },
+    { name: 'Nh\u00e2n s\u1ef1', rows: people },
+    { name: 'C\u00f4ng vi\u1ec7c', rows: details },
+    { name: 'C\u1ea3nh b\u00e1o', rows: warnings },
   ];
 }
 
@@ -285,17 +417,19 @@ export default function OrganizationReport({
       const sheets = buildSheets(
         selectedTasks, directory.members, workspaceId, period, today,
       );
-      const content = createWorkbook(sheets);
+      const content = createXlsx(sheets);
       const blob = new Blob(
-        ['\uFEFF', content],
-        { type: 'application/vnd.ms-excel;charset=utf-8' },
+        [new Uint8Array(content)],
+        {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
       );
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
 
       link.href = url;
       link.download = 'TEAM360_BaoCao_' +
-        period + '_' + today + '.xml';
+        period + '_' + today + '.xlsx';
 
       document.body.appendChild(link);
       link.click();
@@ -379,7 +513,7 @@ export default function OrganizationReport({
       {notice && <p role="status" aria-live="polite">{notice}</p>}
 
       <p className="muted" style={{ fontSize: 11, marginTop: 12 }}>
-        {'T\u1ec7p .xml m\u1edf \u0111\u01b0\u1ee3c trong Excel; kh\u00f4ng ph\u1ea3i .xlsx. B\u00e1o c\u00e1o kh\u00f4ng bao g\u1ed3m c\u00f4ng vi\u1ec7c b\u1ecb gi\u1edbi h\u1ea1n quy\u1ec1n xem ho\u1eb7c v\u01b0\u1ee3t gi\u1edbi h\u1ea1n API.'}
+        {'T\u1ec7p XLSX chu\u1ea9n Excel. B\u00e1o c\u00e1o ch\u1ec9 g\u1ed3m c\u00f4ng vi\u1ec7c \u0111\u01b0\u1ee3c ph\u00e9p xem trong gi\u1edbi h\u1ea1n API.'}
       </p>
     </section>
   );
