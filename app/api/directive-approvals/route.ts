@@ -145,6 +145,7 @@ const integerVersion = (value: unknown): value is number =>
   Number.isSafeInteger(value) && value >= 1;
 
 // TEAM360_DIRECTIVE_APPROVALS_V51C
+// TEAM360_APPROVAL_ATOMIC_V51D
 export async function GET(req: Request) {
   const user = await getChatGPTUser();
   if (!user) return reply({ error: 'Vui l?ng ??ng nh?p.' }, 401);
@@ -319,13 +320,15 @@ export async function POST(req: Request) {
           "INSERT INTO directive_approval_events " +
           "(id,draft_id,workflow_version,action,actor_id," +
           "reviewer_id,draft_version,created_at) " +
-          "SELECT ?,draft_id,workflow_version,'submit',?,?,?,? " +
-          "FROM directive_approvals " +
+          "VALUES (?,(" +
+          "SELECT draft_id FROM directive_approvals " +
           "WHERE draft_id=? AND status='submitted' " +
-          "AND workflow_version=1 AND submitted_by=?"
+          "AND workflow_version=1 AND submitted_by=? " +
+          "AND submitted_version=?" +
+          "),1,'submit',?,?,?,?)"
         ).bind(
-          eventId, user.userId, reviewerId,
-          draftVersion, now, draftId, user.userId,
+          eventId, draftId, user.userId, draftVersion,
+          user.userId, reviewerId, draftVersion, now,
         ),
       ]);
 
@@ -396,20 +399,23 @@ export async function POST(req: Request) {
           "INSERT INTO directive_approval_events " +
           "(id,draft_id,workflow_version,action,actor_id," +
           "reviewer_id,draft_version,reason,created_at) " +
-          "SELECT ?,draft_id,workflow_version,?,?,?,?,? " +
-          "FROM directive_approvals " +
+          "VALUES (?,(" +
+          "SELECT draft_id FROM directive_approvals " +
           "WHERE draft_id=? AND workflow_version=? " +
-          "AND updated_at=?"
+          "AND updated_at=? AND status=?" +
+          "),?,?,?,?,?,?,?)"
         ).bind(
           eventId,
+          draftId,
+          nextVersion,
+          now,
+          nextStatus,
+          nextVersion,
           action,
           user.userId,
           assignedReviewer,
           draftVersion,
           decisionReason,
-          now,
-          draftId,
-          nextVersion,
           now,
         ),
       ]);
