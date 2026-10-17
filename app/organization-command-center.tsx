@@ -125,6 +125,21 @@ export default function OrganizationCommandCenter({
     useState<'update' | 'resolve' | 'coordinate'>('update');
   const [notice, setNotice] = useState('');
 
+  // TEAM360_DRAFT_V49
+  // Local component state only: no server writes and no cross-session storage.
+  type DraftVersion = {
+    text: string;
+    savedAt: string;
+    revision: number;
+  };
+
+  const [editedDrafts, setEditedDrafts] =
+    useState<Record<string, string>>({});
+
+  const [draftVersions, setDraftVersions] =
+    useState<Record<string, DraftVersion[]>>({});
+
+
   useEffect(() => {
     let active = true;
 
@@ -207,7 +222,11 @@ export default function OrganizationCommandCenter({
     });
 
   const selected = visible.find(entry => entry.task.id === selectedId);
-  const draft = selected
+  const draftKey = selected
+    ? workspaceId + ':' + selected.task.id
+    : '';
+
+  const generatedDraft = selected
     ? makeDirective(
         selected,
         ownerName(selected.task),
@@ -216,10 +235,92 @@ export default function OrganizationCommandCenter({
       )
     : '';
 
+  const draft = selected
+    ? (editedDrafts[draftKey] ?? generatedDraft)
+    : '';
+
+  const versions = draftVersions[draftKey] || [];
+
   const detailUrl = (id: string) =>
     '/?view=shared-tasks&workspaceId=' +
     encodeURIComponent(workspaceId) +
     '&taskId=' + encodeURIComponent(id);
+
+
+  function saveVersion() {
+    if (!selected || !draft.trim()) return;
+
+    const history = draftVersions[draftKey] || [];
+    const latest = history[0];
+
+    if (latest?.text === draft) {
+      setNotice('N\u1ed9i dung kh\u00f4ng thay \u0111\u1ed5i so v\u1edbi b\u1ea3n l\u01b0u g\u1ea7n nh\u1ea5t.');
+      return;
+    }
+
+    const nextVersion = {
+      text: draft,
+      savedAt: new Date().toLocaleString('vi-VN'),
+      revision: (latest?.revision || 0) + 1,
+    };
+
+    setDraftVersions(current => ({
+      ...current,
+      [draftKey]: [nextVersion, ...(current[draftKey] || [])].slice(0, 20),
+    }));
+
+    setNotice('\u0110\u00e3 l\u01b0u phi\u00ean b\u1ea3n ' +
+      nextVersion.revision + ' trong phi\u00ean l\u00e0m vi\u1ec7c.');
+  }
+
+  function restoreVersion(text: string, revision: number) {
+    if (!selected) return;
+
+    setEditedDrafts(current => ({
+      ...current,
+      [draftKey]: text,
+    }));
+
+    setNotice('\u0110\u00e3 kh\u00f4i ph\u1ee5c n\u1ed9i dung phi\u00ean b\u1ea3n ' +
+      revision + '. Ch\u01b0a ghi \u0111\u00e8 l\u1ecbch s\u1eed.');
+  }
+
+  function resetDraft() {
+    if (!selected) return;
+
+    setEditedDrafts(current => {
+      const next = { ...current };
+      delete next[draftKey];
+      return next;
+    });
+
+    setNotice('\u0110\u00e3 n\u1ea1p l\u1ea1i m\u1eabu ch\u1ec9 \u0111\u1ea1o. C\u00e1c phi\u00ean b\u1ea3n \u0111\u00e3 l\u01b0u v\u1eabn gi\u1eef nguy\u00ean.');
+  }
+
+  function downloadDraft() {
+    if (!selected || !draft.trim()) return;
+
+    const content = new Blob(
+      ['\uFEFF', draft],
+      { type: 'text/plain;charset=utf-8' }
+    );
+
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download =
+      'DuThaoChiDao_' +
+      selected.task.id.replace(/[^a-zA-Z0-9_-]/g, '_') +
+      '.txt';
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 10000);
+    setNotice('\u0110\u00e3 t\u1ea1o t\u1ec7p d\u1ef1 th\u1ea3o TXT.');
+  }
 
   async function copyDraft() {
     if (!draft) return;
@@ -429,9 +530,16 @@ export default function OrganizationCommandCenter({
           </label>
 
           <textarea
-            readOnly
             rows={15}
             value={draft}
+            onChange={event => {
+              const text = event.target.value;
+              setEditedDrafts(current => ({
+                ...current,
+                [draftKey]: text,
+              }));
+              setNotice('');
+            }}
             aria-label="Noi dung du thao chi dao"
             style={{
               width: '100%',
@@ -443,6 +551,96 @@ export default function OrganizationCommandCenter({
               lineHeight: 1.6,
             }}
           />
+
+
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+          }}>
+            <button
+              type="button"
+              className="btn secondary compact"
+              onClick={saveVersion}
+              disabled={!draft.trim()}
+            >
+              {'L\u01b0u phi\u00ean b\u1ea3n'}
+            </button>
+
+            <button
+              type="button"
+              className="btn secondary compact"
+              onClick={resetDraft}
+            >
+              {'N\u1ea1p l\u1ea1i m\u1eabu'}
+            </button>
+
+            <button
+              type="button"
+              className="btn secondary compact"
+              onClick={downloadDraft}
+              disabled={!draft.trim()}
+            >
+              {'T\u1ea3i b\u1ea3n nh\u00e1p TXT'}
+            </button>
+          </div>
+
+          <div style={{
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: 12,
+          }}>
+            <strong style={{ fontSize: 13 }}>
+              {'L\u1ecbch s\u1eed phi\u00ean b\u1ea3n trong phi\u00ean'}
+            </strong>
+
+            {versions.length === 0 ? (
+              <p className="muted" style={{
+                fontSize: 12,
+                marginBottom: 0,
+              }}>
+                {'Ch\u01b0a l\u01b0u phi\u00ean b\u1ea3n n\u00e0o.'}
+              </p>
+            ) : (
+              <div style={{
+                marginTop: 10,
+                display: 'grid',
+                gap: 8,
+                maxHeight: 220,
+                overflowY: 'auto',
+              }}>
+                {versions.map(version => (
+                  <div key={version.revision} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 10,
+                    padding: 9,
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                  }}>
+                    <span style={{ fontSize: 12 }}>
+                      {'B\u1ea3n '}{version.revision}
+                      {' \u00b7 '}{version.savedAt}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="btn secondary compact"
+                      onClick={() => restoreVersion(
+                        version.text,
+                        version.revision,
+                      )}
+                    >
+                      {'Kh\u00f4i ph\u1ee5c'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 9 }}>
             <button
@@ -464,6 +662,10 @@ export default function OrganizationCommandCenter({
           {notice && (
             <p role="status" aria-live="polite">{notice}</p>
           )}
+
+          <p className="muted" style={{ fontSize: 11, margin: 0 }}>
+            {'Phiên bản chỉ giữ trong bộ nhớ của giao diện hiện tại, tối đa 20 bản mỗi công việc. Tải TXT để giữ nội dung sau khi tải lại trang.'}
+          </p>
 
           <p className="muted" style={{ fontSize: 11, margin: 0 }}>
             {'B\u1ea3n nh\u00e1p ch\u01b0a \u0111\u01b0\u1ee3c g\u1eedi. C\u1ea7n ki\u1ec3m tra ng\u01b0\u1eddi nh\u1eadn, th\u1ea9m quy\u1ec1n v\u00e0 n\u1ed9i dung tr\u01b0\u1edbc khi s\u1eed d\u1ee5ng.'}
