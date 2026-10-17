@@ -29,7 +29,7 @@ type DirectoryState = {
   error: string;
 };
 
-type Period = 'all' | 'week' | 'month';
+type Period = 'all' | 'week' | 'month' | 'custom';
 type Cell = string | number;
 type Sheet = { name: string; rows: Cell[][] };
 
@@ -260,8 +260,23 @@ function weekStart(day: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-function inPeriod(task: Task, period: Period, today: string): boolean {
+// TEAM360_REPORT_V46
+function inPeriod(
+  task: Task,
+  period: Period,
+  today: string,
+  from = '',
+  to = '',
+): boolean {
   if (period === 'all') return true;
+  if (period === 'custom') {
+    return Boolean(
+      task.due && from && to &&
+      from <= to &&
+      task.due >= from &&
+      task.due <= to
+    );
+  }
   if (!task.due) return false;
   if (period === 'month') return task.due.slice(0, 7) === today.slice(0, 7);
 
@@ -316,6 +331,8 @@ function buildSheets(
   workspaceId: string,
   period: Period,
   today: string,
+  from = '',
+  to = '',
 ): Sheet[] {
   const byId = new Map(members.map((m) => [m.userId, m]));
 
@@ -333,7 +350,9 @@ function buildSheets(
   const summary = countSummary(tasks, today);
   const periodName = period === 'all'
     ? 'T\u1ea5t c\u1ea3'
-    : period === 'week' ? 'Tu\u1ea7n n\u00e0y' : 'Th\u00e1ng n\u00e0y';
+    : period === 'week' ? 'Tu\u1ea7n n\u00e0y'
+    : period === 'month' ? 'Th\u00e1ng n\u00e0y'
+    : reportDate(from) + ' - ' + reportDate(to);
 
   const overview: Cell[][] = [
     ['Ch\u1ec9 ti\u00eau', 'Gi\u00e1 tr\u1ecb'],
@@ -442,6 +461,8 @@ export default function OrganizationReport({
   tasks: Task[];
 }) {
   const [period, setPeriod] = useState<Period>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [directory, setDirectory] = useState<DirectoryState | null>(null);
   const [notice, setNotice] = useState('');
 
@@ -474,17 +495,58 @@ export default function OrganizationReport({
   }, [workspaceId]);
 
   const today = localDay();
-  const selectedTasks = tasks.filter((task) => inPeriod(task, period, today));
+  const validRange = period !== 'custom' ||
+    Boolean(dateFrom && dateTo && dateFrom <= dateTo);
+
+  const selectedTasks = validRange
+    ? tasks.filter((task) =>
+        inPeriod(task, period, today, dateFrom, dateTo)
+      )
+    : [];
+
+  const preview = countSummary(selectedTasks, today);
+
+  const members = directory?.workspaceId === workspaceId &&
+    !directory.error ? directory.members : [];
+
+  const peopleById = new Map(members.map((m) => [m.userId, m]));
+
+  const departmentMap = new Map<string, Task[]>();
+
+  if (members.length || selectedTasks.length === 0) {
+    for (const task of selectedTasks) {
+      const member = task.assignedTo
+        ? peopleById.get(task.assignedTo)
+        : null;
+      const name = !task.assignedTo
+        ? unassigned
+        : member?.departmentName?.trim() || unknownDept;
+
+      const group = departmentMap.get(name) || [];
+      group.push(task);
+      departmentMap.set(name, group);
+    }
+  }
+
+  const chartRows = [...departmentMap.entries()]
+    .map(([name, items]) => ({
+      name,
+      ...countSummary(items, today),
+    }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+    .slice(0, 12);
+
   const isReady = directory?.workspaceId === workspaceId &&
     !directory.error;
 
   function downloadReport() {
     if (!directory || directory.workspaceId !== workspaceId ||
-      directory.error) return;
+      directory.error || !validRange) return;
 
     try {
       const sheets = buildSheets(
-        selectedTasks, directory.members, workspaceId, period, today,
+        selectedTasks, directory.members, workspaceId,
+        period, today, dateFrom, dateTo,
       );
       const content = createXlsx(sheets);
       const blob = new Blob(
@@ -498,7 +560,9 @@ export default function OrganizationReport({
 
       link.href = url;
       link.download = 'TEAM360_BaoCao_' +
-        period + '_' + today + '.xlsx';
+        period +
+        (period === 'custom' ? '_' + dateFrom + '_' + dateTo : '') +
+        '_' + today + '.xlsx';
 
       document.body.appendChild(link);
       link.click();
@@ -547,13 +611,46 @@ export default function OrganizationReport({
             <option value="all">{'T\u1ea5t c\u1ea3'}</option>
             <option value="week">{'Tu\u1ea7n n\u00e0y'}</option>
             <option value="month">{'Th\u00e1ng n\u00e0y'}</option>
+            <option value="custom">
+              {'Kho\u1ea3ng ng\u00e0y t\u00f9y ch\u1ecdn'}
+            </option>
           </select>
         </label>
+
+
+        {period === 'custom' && (
+          <>
+            <label style={{ display: 'grid', gap: 6 }}>
+              {'T\u1eeb ng\u00e0y'}
+              <input
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(event) => {
+                  setDateFrom(event.target.value);
+                  setNotice('');
+                }}
+              />
+            </label>
+            <label style={{ display: 'grid', gap: 6 }}>
+              {'\u0110\u1ebfn ng\u00e0y'}
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(event) => {
+                  setDateTo(event.target.value);
+                  setNotice('');
+                }}
+              />
+            </label>
+          </>
+        )}
 
         <button
           type="button"
           className="btn primary"
-          disabled={!isReady}
+          disabled={!isReady || !validRange}
           onClick={downloadReport}
         >
           {'Xu\u1ea5t b\u00e1o c\u00e1o Excel'}
@@ -577,6 +674,115 @@ export default function OrganizationReport({
 
       {!isReady && directory?.workspaceId !== workspaceId && (
         <p className="muted">{'\u0110ang t\u1ea3i danh b\u1ea1...'}</p>
+      )}
+
+
+      {!validRange && (
+        <p role="alert" style={{ color: '#b91c1c' }}>
+          {'Vui l\u00f2ng ch\u1ecdn kho\u1ea3ng ng\u00e0y h\u1ee3p l\u1ec7 (t\u1eeb ng\u00e0y kh\u00f4ng sau \u0111\u1ebfn ng\u00e0y).'}
+        </p>
+      )}
+
+      {isReady && validRange && (
+        <div style={{
+          marginTop: 18,
+          padding: 16,
+          border: '1px solid #e2e8f0',
+          borderRadius: 12,
+        }}>
+          <h4 style={{ margin: '0 0 12px' }}>
+            {'Xem tr\u01b0\u1edbc b\u00e1o c\u00e1o'}
+          </h4>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit,minmax(125px,1fr))',
+            gap: 10,
+          }}>
+            {[
+              ['T\u1ed5ng vi\u1ec7c', preview.total],
+              ['Ho\u00e0n th\u00e0nh', preview.completed],
+              ['\u0110ang m\u1edf', preview.active],
+              ['Qu\u00e1 h\u1ea1n', preview.overdue],
+              ['Ch\u1edd duy\u1ec7t', preview.pending],
+              ['Thi\u1ebfu ng\u01b0\u1eddi nh\u1eadn', preview.missingOwner],
+              ['Thi\u1ebfu h\u1ea1n ch\u00f3t', preview.missingDue],
+            ].map(([label, value]) => (
+              <div key={String(label)} style={{
+                padding: 12,
+                border: '1px solid #e2e8f0',
+                borderRadius: 9,
+              }}>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {label}
+                </div>
+                <strong style={{ fontSize: 22 }}>{value}</strong>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ fontSize: 13, marginTop: 14 }}>
+            {'T\u1ef7 l\u1ec7 ho\u00e0n th\u00e0nh: '}
+            <strong>
+              {completionRate(preview.completed, preview.total)}
+            </strong>
+          </p>
+
+          <h4 style={{ margin: '20px 0 10px' }}>
+            {'Bi\u1ec3u \u0111\u1ed3 hi\u1ec7u su\u1ea5t ph\u00f2ng ban'}
+          </h4>
+
+          {chartRows.length === 0 ? (
+            <p className="muted">
+              {'Ch\u01b0a c\u00f3 d\u1eef li\u1ec7u ph\u00f2ng ban trong k\u1ef3 n\u00e0y.'}
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {chartRows.map((item) => (
+                <div key={item.name}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    fontSize: 12,
+                    marginBottom: 6,
+                  }}>
+                    <strong>{item.name}</strong>
+                    <span>
+                      {item.total} {'vi\u1ec7c'} 
+                      {' Ho\u00e0n th\u00e0nh '}
+                      {completionRate(item.completed, item.total)}
+                      {'  Qu\u00e1 h\u1ea1n '}{item.overdue}
+                    </span>
+                  </div>
+                  <div style={{
+                    height: 14,
+                    background: '#e2e8f0',
+                    borderRadius: 10,
+                    overflow: 'hidden',
+                    display: 'flex',
+                  }}>
+                    <div style={{
+                      width: (item.total
+                        ? item.completed / item.total * 100 : 0) + '%',
+                      background: '#0d9488',
+                    }}/>
+                    <div style={{
+                      width: (item.total
+                        ? item.overdue / item.total * 100 : 0) + '%',
+                      background: '#ef4444',
+                    }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="muted" style={{ fontSize: 11, marginTop: 16 }}>
+            {'Ph\u1ea1m vi: ch\u1ec9 c\u00f4ng vi\u1ec7c t\u00e0i kho\u1ea3n c\u00f3 quy\u1ec1n xem; API hi\u1ec7n t\u1ea1i c\u00f3 th\u1ec3 gi\u1edbi h\u1ea1n 1.000 c\u00f4ng vi\u1ec7c. Bi\u1ec3u \u0111\u1ed3 hi\u1ec3n th\u1ecb t\u1ed1i \u0111a 12 nh\u00f3m.'}
+          </p>
+        </div>
       )}
 
       {notice && <p role="status" aria-live="polite">{notice}</p>}
