@@ -6,6 +6,7 @@ import {
   type SharedTaskAlert,
 } from '../lib/shared-task-workflow';
 import { localDay } from '../lib/domain';
+import DirectiveIssuancePanel from './directive-issuance-panel';
 
 type Task = {
   id: string;
@@ -1059,6 +1060,20 @@ export default function OrganizationCommandCenter({
           </label>
 
 
+
+          {/* TEAM360_V52H_PANEL */}
+          {currentRemoteId && activeApproval && (
+            <DirectiveIssuancePanel
+              key={workspaceId + ':' + currentRemoteId}
+              workspaceId={workspaceId}
+              taskId={selected.task.id}
+              draftId={currentRemoteId}
+              approved={workflow?.status === 'approved'}
+              draftVersion={remoteDraft?.version || 0}
+              workflowVersion={workflow?.workflow_version || 0}
+              members={members}
+            />
+          )}
 
           <div style={{
             border: '1px solid #a5b4fc', borderRadius: 12, padding: 14,
