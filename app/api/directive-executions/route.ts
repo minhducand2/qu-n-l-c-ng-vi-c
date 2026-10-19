@@ -144,7 +144,7 @@ export async function PATCH(req: Request) {
       ).bind(status,now,itemId,issuanceId,item.status,issuanceId,workspaceId,user.userId,workspaceId,user.userId),
       db.prepare(
         'INSERT INTO directive_execution_events (id,execution_item_id,action,actor_id,note,created_at) ' +
-        'VALUES (?,(SELECT id FROM directive_execution_items WHERE id=? AND issuance_id=? AND status=? AND updated_at=?),?,?,?)'
+        'VALUES (?,(SELECT id FROM directive_execution_items WHERE id=? AND issuance_id=? AND status=? AND updated_at=?),?,?,?,?)'
       ).bind(eventId,itemId,issuanceId,status,now,action,user.userId,b.note||null,now),
     ]);
     if (result[0]?.meta?.changes!==1 || result[1]?.meta?.changes!==1)
