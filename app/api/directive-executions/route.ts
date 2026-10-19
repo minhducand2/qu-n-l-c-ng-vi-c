@@ -38,6 +38,7 @@ async function taskAccess(db: D1Database, workspaceId: string, taskId: string, u
 }
 
 // TEAM360_V52C_EXECUTIONS
+// TEAM360_V52E_ASSIGNEE_ACCESS
 async function issuanceAccess(db: D1Database, workspaceId: string, issuanceId: string) {
   return db.prepare(
     'SELECT i.id,i.status,d.task_id FROM directive_issuances i ' +
@@ -56,12 +57,14 @@ export async function GET(req: Request) {
     const db = env.DB as D1Database;
     const member = await membership(db, workspaceId, user.userId);
     const iss = await issuanceAccess(db, workspaceId, issuanceId);
-    if (!member || !iss || !await taskAccess(db, workspaceId, iss.task_id, user.userId, member.role))
+    if (!member || !iss)
       return respond({ error: 'Không có quyền truy cập.' }, 403);
+    // Assignees may read only their own execution items, not the source task.
+    const canSeeTask = await taskAccess(db, workspaceId, iss.task_id, user.userId, member.role);
     const rows = await db.prepare(
       'SELECT * FROM directive_execution_items WHERE issuance_id=? ORDER BY created_at DESC LIMIT 100'
     ).bind(issuanceId).all<{assignee_id:string;id:string}>();
-    const items = isLeader(member.role) ? (rows.results||[]) :
+    const items = isLeader(member.role) && canSeeTask ? (rows.results||[]) :
       (rows.results||[]).filter(row => row.assignee_id === user.userId);
     return respond({ items });
   } catch { return respond({ error: 'Không tải được danh sách thực hiện.' }, 500); }
@@ -139,9 +142,12 @@ export async function PATCH(req: Request) {
       db.prepare(
         'UPDATE directive_execution_items SET status=?,updated_at=? WHERE id=? AND issuance_id=? AND status=? ' +
         'AND EXISTS (SELECT 1 FROM directive_issuances WHERE id=? AND workspace_id=? AND status=\'issued\') ' +
-        'AND (? = assignee_id OR EXISTS (SELECT 1 FROM memberships WHERE workspace_id=? AND user_id=? ' +
+        "AND EXISTS (SELECT 1 FROM memberships WHERE workspace_id=? AND user_id=? AND status='active') " +
+        "AND ((assignee_id=? AND ? <> 'cancelled') OR EXISTS " +
+        "(SELECT 1 FROM memberships WHERE workspace_id=? AND user_id=? " +
         "AND status='active' AND role IN ('admin','leader')))"
-      ).bind(status,now,itemId,issuanceId,item.status,issuanceId,workspaceId,user.userId,workspaceId,user.userId),
+      ).bind(status,now,itemId,issuanceId,item.status,issuanceId,workspaceId,
+        workspaceId,user.userId,user.userId,status,workspaceId,user.userId),
       db.prepare(
         'INSERT INTO directive_execution_events (id,execution_item_id,action,actor_id,note,created_at) ' +
         'VALUES (?,(SELECT id FROM directive_execution_items WHERE id=? AND issuance_id=? AND status=? AND updated_at=?),?,?,?,?)'
