@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import ReviewerProvisionPanel from './reviewer-provision-panel'; // TEAM360_REVIEWER_PROVISION_V52I
 import {
   getSharedTaskAlerts,
   type SharedTaskAlert,
@@ -1074,6 +1075,8 @@ export default function OrganizationCommandCenter({
               members={members}
             />
           )}
+
+           <ReviewerProvisionPanel workspaceId={workspaceId} />
 
           <div style={{
             border: '1px solid #a5b4fc', borderRadius: 12, padding: 14,
